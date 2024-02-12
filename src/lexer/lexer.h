@@ -7,19 +7,32 @@
 
 typedef enum TokenType {
   NONE = 0,
-  INSTRUCTION = 1,
-  REGISTER = 2,
-  ARGUMENT = 3,
-  NUMBER = 4,
-  LABEL_DECLARATION = 5,
-  LABEL = 6,
-  DIRECTIVE = 7,
+
+  DIRECTIVE,
+  INSTRUCTION_OR_LABEL,
+  LABEL_DECLARATION,
+
+  NUMBER,
+  REGISTER,
+  STRING,
+
+  // literals
+  DOT,
+  R_SBRACE,
+  L_SBRACE,
+  BANG,
+
+  STAR,
+  PLUS,
+  MINUS,
+  EQUAL,
+  R_SLASH,
 } TokenType;
 
 typedef struct Token {
-  u8 len;
   TokenType type;
   char value[MAX_TOKEN_SIZE];
+  u8 len;
 } Token;
 
 i8 getToken(FILE *src, Token *token);

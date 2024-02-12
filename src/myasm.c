@@ -1,51 +1,129 @@
 #include "myasm.h"
 #include "lexer/lexer.h"
-#include <fcntl.h>
+#include <elf.h>
 #include <string.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <unistd.h>
+#define TABLE_SIZE (128)
+#define ERROR_SIZE (255)
+#define ELF_SIZE (64)
 
-DLA sym_table = {0};
+// Error stuff
+typedef struct Error {
+  size_t line;
+  char msg[ERROR_SIZE];
+} Error;
 
-char *ISA = NULL;
-size_t ISA_LEN = 0;
+// building binary stuff
+typedef struct SymbolTable {
+  size_t len;       // len = n - 1, where n is number of \0
+  char *names;      // label names
+  Elf64_Sym *table; // labels info
+} SymbolTable;
 
-void DLAInit(size_t capacity) {
-  sym_table.capacity = capacity;
-  sym_table.len = 0;
-  sym_table.table = xmalloc(BUFFER_SIZE);
+typedef struct SectionHeader {
+  size_t len;        // len = n - 1, where n is number of \0
+  char *names;       // section names
+  Elf64_Shdr *table; // sections info
+} SectionHeader;
+
+static Elf64_Ehdr elf_header = {0};
+
+static SymbolTable symbol_table = {0};
+static SectionHeader section_header = {0};
+static size_t current_section = 0; // index of current section in section_header
+
+static Error *errors = NULL;
+static size_t n_errors = 0;
+
+static size_t LC = 0; // location counter
+
+void *xmalloc(size_t size);
+void firstPass(const char *filename);
+void printError(const Error *err);
+void addToSymbolTable(const char *name, u8 st_info, u8 st_other, u16 st_shndx);
+void addToSectionHeader(const char *name, u32 sh_type, u64 sh_flags,
+                        u64 sh_size, u32 sh_link, u32 sh_info, u64 sh_addralign,
+                        u64 sh_entsize);
+
+#define initTable(Table)                                                       \
+  do {                                                                         \
+    Table.table = xmalloc(sizeof(*Table.table) * TABLE_SIZE);                  \
+    Table.names = xmalloc(MAX_TOKEN_SIZE * TABLE_SIZE);                        \
+    Table.len = 0;                                                             \
+  } while (0);
+
+#define searchInTable(Table, name)                                             \
+  ({                                                                           \
+    i8 res = 0;                                                                \
+    char *names = Table.names;                                                 \
+    for (size_t i = 0; i < Table.len; i++) {                                   \
+      if (strcmp(names, name) == 0) {                                          \
+        res = i;                                                               \
+      }                                                                        \
+      names += strlen(names) + 1;                                              \
+    }                                                                          \
+    res;                                                                       \
+  })
+
+int main(int argc, char **argv) {
+  if (argc == 1) {
+    fprintf(stderr, "Please, provide source file");
+    return EXIT_SUCCESS;
+  }
+
+  errors = xmalloc(sizeof(*errors) * TABLE_SIZE);
+
+  initTable(symbol_table);
+  initTable(section_header);
+
+  firstPass(argv[1]);
+  return EXIT_SUCCESS;
 }
 
-char *getLabel(size_t ind) {
-  if (ind == 0) {
-    return sym_table.table;
-  }
+void printError(const Error *err) {}
 
-  size_t j = 0;
-  for (size_t i = 0; i < sym_table.len; i++) {
-    if (j == ind) {
-      return &sym_table.table[i];
-    }
-    if (sym_table.table[i] == '\0') {
-      j++;
-    }
-  }
-  return NULL;
+void addToSymbolTable(const char *name, u8 st_info, u8 st_other, u16 st_shndx) {
+  /*  Elf64_Sym *st = &symbol_table.table[symbol_table.len];
+   *  st->st_name = symbol_table.len;
+   *  st->st_value = LC;
+   *  st->st_size = 0;
+   *  st->st_info = st_info;
+   *  st->st_other = st_other;
+   *  st->st_shndx = st_shndx;
+   *  symbol_table.len++;
+   */
 }
 
-void AddLabel(char *label) {
-  if (sym_table.capacity == sym_table.len) {
-    sym_table.table =
-        realloc(sym_table.table, sym_table.capacity + BUFFER_SIZE);
+void addToSectionHeader(const char *name, u32 sh_type, u64 sh_flags,
+                        u64 sh_size, u32 sh_link, u32 sh_info, u64 sh_addralign,
+                        u64 sh_entsize) {
+  /*  Elf64_Shdr *shdr = &section_header.table[section_header.len];
+   *  shdr->sh_name = section_header.len;
+   *  shdr->sh_type = sh_type;
+   *  shdr->sh_flags = sh_flags;
+   *  shdr->sh_addr = 0;
+   *  shdr->sh_offset = LC + ELF_SIZE;
+   *  shdr->sh_size = sh_size;
+   *  shdr->sh_link = sh_link;
+   *  shdr->sh_info = sh_info;
+   *  shdr->sh_addralign = sh_addralign;
+   *  shdr->sh_entsize = sh_entsize;
+   */
+}
+
+void firstPass(const char *filename) {
+  FILE *src = fopen(filename, "r");
+  if (!src) {
+    fprintf(stderr, "%s\n", strerror(errno));
+    exit(EXIT_FAILURE);
   }
-  if (sym_table.len == 0) {
-    memcpy(sym_table.table, label, strlen(label) + 1);
-  } else {
-    char *last = getLabel(sym_table.len - 1);
-    memcpy(last + strlen(last) + 1, label, strlen(label) + 1);
+
+  getToken(src, NULL); // sets default file
+  Token token = {0};
+
+  while (getToken(NULL, &token) != EOF) {
   }
-  sym_table.len++;
+
+  fclose(src);
 }
 
 void *xmalloc(size_t size) {
@@ -55,43 +133,4 @@ void *xmalloc(size_t size) {
     exit(EXIT_FAILURE);
   }
   return p;
-}
-
-void MapISA(char *file_name) {
-  struct stat st;
-  if (stat(file_name, &st) == 0) {
-    ISA_LEN = st.st_size;
-  }
-
-  int fd = open(file_name, O_RDONLY);
-  ISA = mmap(NULL, ISA_LEN, PROT_READ, MAP_PRIVATE, fd, 0);
-  close(fd);
-}
-
-void firstPass(const char *filename) {
-  FILE *src = fopen(filename, "r");
-  Token token = {0};
-  getToken(src, NULL);
-
-  while (getToken(NULL, &token) != -1) {
-    printf("%20s, %d\n", token.value, token.type);
-    memset(token.value, 0, MAX_TOKEN_SIZE);
-  }
-
-  fclose(src);
-}
-
-int main(int argc, char **argv) {
-  if (argc == 1) {
-    fprintf(stderr, "Please proved src");
-    return EXIT_SUCCESS;
-  }
-  MapISA("/home/box/code/c/myasm/src/aarch64_instructions");
-  DLAInit(100);
-
-  firstPass(argv[1]);
-
-  free(sym_table.table);
-  munmap(ISA, ISA_LEN);
-  return EXIT_SUCCESS;
 }
