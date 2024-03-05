@@ -5,7 +5,7 @@ SRC_DIR := src
 TARGET_DIR := build
 TARGET := myasm
 
-CFLAGS := -g -Wpedantic -Wall -Wextra -fsanitize=address,pointer-compare,pointer-subtract,leak,undefined,null,bounds,alignment
+CFLAGS := -std=c11 -g -Wpedantic -Wall -Wextra -fsanitize=address,pointer-compare,pointer-subtract,leak,undefined,null,bounds,alignment
 
 .PHONY: all clean
 

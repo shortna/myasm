@@ -1,6 +1,5 @@
 #include "lexer.h"
 #include <ctype.h>
-#include <string.h>
 
 static FILE *SRC_FILE = NULL;
 
@@ -22,7 +21,7 @@ TokenType getTokenType(const Token *token) {
     return LABEL_DECLARATION;
   }
 
-  switch (tolower(*value)) {
+  switch (*value) {
   case '!':
     return BANG;
   case '[':
@@ -57,19 +56,25 @@ TokenType getTokenType(const Token *token) {
       sscanf(value, "%*255[01]%c", &ch);
       break;
     default:
-      sscanf(value, "%*u%c", &ch);
+      sscanf(value, "%*d%c", &ch);
       break;
     }
 
     if (!ch) {
       return NUMBER;
     }
+    return NONE;
   }
 
   case 's':
   case 'l':
   case 'x':
-  case 'w': {
+  case 'w':
+    if (strcmp(value, "sp") == 0 || strcmp(value, "lr") == 0 ||
+        strcmp(value, "xzr") == 0 || strcmp(value, "wzr") == 0) {
+      return REGISTER;
+    }
+
     value++;
 
     char ch = 0;
@@ -80,19 +85,7 @@ TokenType getTokenType(const Token *token) {
       return REGISTER;
     }
 
-    char v[MAX_TOKEN_SIZE] = {0};
-    memcpy(v, value, token->len + 1);
-    while (*v != '\0') {
-      *v = tolower(*v);
-    }
-
-    if (strcmp(v, "sp") == 0 || strcmp(v, "lr") == 0 || strcmp(v, "xzr") == 0 ||
-        strcmp(v, "wzr") == 0) {
-      return REGISTER;
-    }
-
     __attribute__((fallthrough));
-  }
 
   default:
     return INSTRUCTION_OR_LABEL;
@@ -125,10 +118,10 @@ i8 getToken(FILE *src, Token *token) {
     case -1:
       return -1;
 
-    case ' ':
     case '\n':
-    case '\t':
+    case ' ':
     case ',':
+    case '\t':
       if (*token->value != '\0') {
         goto end;
       }
@@ -137,9 +130,9 @@ i8 getToken(FILE *src, Token *token) {
     case '/':
       ch = fgetc(SRC_FILE);
       if (ch != '/') {
+        fseek(SRC_FILE, -1, SEEK_CUR);
         token->value[i] = ch;
         i++;
-        fseek(SRC_FILE, -1, SEEK_CUR);
         goto end;
       }
 
@@ -174,7 +167,7 @@ i8 getToken(FILE *src, Token *token) {
       goto end;
 
     default:
-      token->value[i] = ch;
+      token->value[i] = tolower(ch);
       i++;
     }
   }

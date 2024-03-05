@@ -1,9 +1,7 @@
 #ifndef MYASM_LEXER
 #define MYASM_LEXER
 
-#include <limits.h>
-#include "../myasm.h"
-#define MAX_TOKEN_SIZE UINT8_MAX
+#include "myasm.h"
 
 typedef enum TokenType {
   NONE = 0,

@@ -1,0 +1,8 @@
+MOV                   <Xd|SP>,#<imm>
+MOV                   <Xd>,#<imm>
+MOV                   <Xd>,<Xm>
+MOV                   <Xd|SP>,<Xn|SP>
+MOV                   <Xd>,#<imm>
+ADR                   <Xd>,<label>
+SVC                   #<imm>
+B                     <label>

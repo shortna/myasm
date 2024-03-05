@@ -5,6 +5,10 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#define DEBUG
+#define MAX_TOKEN_SIZE (100)
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -17,5 +21,6 @@ typedef int32_t i32;
 typedef int64_t i64;
 
 void *xmalloc(size_t size);
+void *xrealloc(void *p, size_t size);
 
 #endif
