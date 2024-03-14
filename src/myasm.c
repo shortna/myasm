@@ -1,5 +1,5 @@
 #include "myasm.h"
-#include "parse.h"
+#include "parser.h"
 
 void *xmalloc(size_t size);
 void firstPass(const char *filename);
@@ -21,7 +21,6 @@ void firstPass(const char *filename) {
     exit(EXIT_FAILURE);
   }
 
-  buildTables(src);
   fclose(src);
 }
 
