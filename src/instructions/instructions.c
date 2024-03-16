@@ -1,7 +1,7 @@
-#include "tables.h"
+#include "instructions.h"
 #define NEED_REPLACE UINT8_MAX
 
-const Instruction INSTRUCTIONS[] = {
+static const Instruction INSTRUCTIONS[] = {
     {{"AND", "ORR", "EOR", "ANDS", 0},
      LOGICAL_IMM,
      .limm = (LogicalImm){0b1, NEED_REPLACE, SOP_LOGICAL_IMM, 0}},
@@ -28,19 +28,13 @@ const Instruction INSTRUCTIONS[] = {
      .exception = (Exceptions){SOP_EXCEPTIONS, 0}},
 };
 
-SymTable SYMBOLS = {0};
-ShdrTable SECTIONS = {0};
-
 const Instruction *searchInstruction(const char *mnemonic) {
   for (size_t i = 0; i < sizeof(INSTRUCTIONS) / sizeof(*INSTRUCTIONS); i++) {
     for (u8 j = 0; j < MNEMONICS_PER_GROUP; j++) {
       if (strcmp(INSTRUCTIONS[i].mnemonic[j], mnemonic) == 0) {
-        return &INSTRUCTIONS[i];
+        return INSTRUCTIONS + i;
       }
     }
   }
   return NULL;
 }
-
-void addToSym() {}
-void addToShdr() {}

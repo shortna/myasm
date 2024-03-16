@@ -1,5 +1,4 @@
-#include "myasm.h"
-#include "parser.h"
+#include "common/myasm.h"
 
 void *xmalloc(size_t size);
 void firstPass(const char *filename);

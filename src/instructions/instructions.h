@@ -1,8 +1,8 @@
-#ifndef MYASM_TABLES
-#define MYASM_TABLES
+#ifndef MYASM_INSTRUCTIONS
+#define MYASM_INSTRUCTIONS
 
-#include "myasm.h"
-#include <elf.h>
+#include "../common/myasm.h"
+
 #define NAME_MAX (32)
 #define MNEMONICS_PER_GROUP (20)
 
@@ -103,46 +103,5 @@ typedef struct Instruction {
   };
 } Instruction;
 
-extern const Instruction INSTRUCTIONS[];
-const Instruction *searchInstruction(const char *mnemonic);
-
-#define TABLE_START_CAPACITY (10)
-
-#define initTable(table)                                                       \
-  do {                                                                         \
-    table.capacity = TABLE_START_CAPACITY;                                     \
-    table.count = 0;                                                           \
-    table.items = xmalloc(table.capacity * sizeof(*table.items));              \
-  } while (0);
-
-#define resizeTable(table)                                                     \
-  do {                                                                         \
-    table.capacity *= 2;                                                       \
-    table = xrealloc(table, sizeof(*table.items) * table.capacity * 2);        \
-  } while (0);
-
-#define addToTable(table, element)                                             \
-  do {                                                                         \
-    if (table.count == table.capacity) {                                       \
-      resizeTable(table);                                                      \
-    }                                                                          \
-    table.items[table.count] = element;                                        \
-    table.count++;                                                             \
-  } while (0);
-
-typedef struct SymTable {
-  Elf64_Sym *items;
-  size_t count;
-  size_t capacity;
-} SymTable;
-
-typedef struct ShdrTable {
-  Elf64_Shdr *items;
-  size_t count;
-  size_t capacity;
-} ShdrTable;
-
-extern SymTable SYMBOLS;
-extern ShdrTable SECTIONS;
-
 #endif
+

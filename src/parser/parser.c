@@ -1,14 +1,8 @@
 #include "parser.h"
-#include "tables.h"
+#include "../common/erorrs.h"
+#include "../tables/tables.h"
+#include "../instructions/instructions.h"
 #include <ctype.h>
-
-#warning "IMPLEMENT THIS"
-#warning "#include 'errors.h'"
-
-typedef struct {
-  size_t count;
-  char fields[FIELDS_MAX][NAME_MAX];
-} fields_t;
 
 void discardComment(char *buffer) {
   while (*buffer) {
@@ -55,32 +49,32 @@ void toLower(char *line) {
   }
 }
 
-u8 splitLine(const char *line, fields_t *fields) {
-  fields->count = 0;
-  u8 c = 0;
-
-  while (*line) {
-    switch (*line) {
-    case '\n':
-      return fields->count;
-    case ' ':
-    case ',':
-    case '\t':
-      if (c == 0) {
-        break;
-      }
-      fields->count++;
-      c = 0;
-      break;
-    default:
-      fields->fields[fields->count][c] = *line;
-      c++;
-      break;
-    }
-    line++;
-  }
-  return fields->count;
-}
+// u8 splitLine(const char *line, fields_t *fields) {
+//   fields->count = 0;
+//   u8 c = 0;
+// 
+//   while (*line) {
+//     switch (*line) {
+//     case '\n':
+//       return fields->count;
+//     case ' ':
+//     case ',':
+//     case '\t':
+//       if (c == 0) {
+//         break;
+//       }
+//       fields->count++;
+//       c = 0;
+//       break;
+//     default:
+//       fields->fields[fields->count][c] = *line;
+//       c++;
+//       break;
+//     }
+//     line++;
+//   }
+//   return fields->count;
+// }
 
 Register parseRegister(const char *reg) {
   if (strcmp(reg, "xzr") == 0) {
@@ -116,20 +110,12 @@ u8 parseImmediate(const char *immediate, u32 *n) {
   return 1;
 }
 
-inline static const Instruction *parseMnemonic(const char *mnemonic) {
-  return searchInstruction(mnemonic);
-}
-
 int firstPass(FILE *src) {
   if (!src) {
     return -1;
   }
-  initTable(SYMBOLS);
-  initTable(SECTIONS);
 
   char buffer[LINE_MAX] = {0};
-  fields_t fields = {0};
-
   while (fgets(buffer, sizeof(buffer), src)) {
     preprocessLine(buffer);
     if (buffer[strlen(buffer) - 1] == ':') {
