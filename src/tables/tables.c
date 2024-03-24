@@ -4,56 +4,34 @@
 #define STR_START_CAPACITY UINT8_MAX
 
 #define initTable(table)                                                       \
-  do {                                                                         \
-    table.capacity = TABLE_START_CAPACITY;                                     \
-    table.count = 0;                                                           \
-    table.items = xmalloc(table.capacity * sizeof(*table.items));              \
-    table.str = initStr();                                                     \
-  } while (0);
+  table.capacity = TABLE_START_CAPACITY;                                       \
+  table.count = 0;                                                             \
+  table.items = xmalloc(table.capacity * sizeof(*table.items));                \
+  table.str = initStr();
 
 #define freeTable(table)                                                       \
-  do {                                                                         \
-    free(table.str.s);                                                         \
-    free(table.items);                                                         \
-  } while (0);
+  free(table.str.s);                                                           \
+  free(table.items);
 
 #define resizeTable(table)                                                     \
-  do {                                                                         \
-    table.capacity *= 2;                                                       \
-    table.items =                                                              \
-        xrealloc(table.items, sizeof(*table.items) * table.capacity);          \
-  } while (0);
+  table.capacity *= 2;                                                         \
+  table.items = xrealloc(table.items, sizeof(*table.items) * table.capacity);
 
 // usage:
 // bool res;
 // searchInTable(table, needle, res)
 #define searchInTable(table, needle, res)                                      \
-  do {                                                                         \
-    res = 0;                                                                   \
-    char *__s = table.str.s + 1;                                               \
-    size_t __i = 1;                                                            \
-    while (__i < table.count) {                                                \
-      if (strcmp(__s, needle) == 0) {                                          \
-        res = 1;                                                               \
-        break;                                                                 \
-      }                                                                        \
-      __s += strlen(__s) + 1;                                                  \
-      __i++;                                                                   \
+  res = 0;                                                                     \
+  char *__s = table.str.s + 1;                                                 \
+  size_t __i = 1;                                                              \
+  while (__i < table.count) {                                                  \
+    if (strcmp(__s, needle) == 0) {                                            \
+      res = 1;                                                                 \
+      break;                                                                   \
     }                                                                          \
-  } while (0);
-
-typedef struct Str {
-  char *s;
-  size_t len;
-  size_t capacity;
-} Str;
-
-typedef struct SymTable {
-  Str str;
-  Elf64_Sym *items;
-  size_t count;
-  size_t capacity;
-} SymTable;
+    __s += strlen(__s) + 1;                                                    \
+    __i++;                                                                     \
+  }
 
 typedef struct ShdrTable {
   Str str;

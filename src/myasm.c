@@ -1,7 +1,8 @@
 #include "common/myasm.h"
+#include "parser/parser.h"
 
 void *xmalloc(size_t size);
-void firstPass(const char *filename);
+void run(const char *filename);
 
 int main(int argc, char **argv) {
   if (argc == 1) {
@@ -9,17 +10,18 @@ int main(int argc, char **argv) {
     return EXIT_SUCCESS;
   }
 
-  firstPass(argv[1]);
+  run(argv[1]);
   return EXIT_SUCCESS;
 }
 
-void firstPass(const char *filename) {
+void run(const char *filename) {
   FILE *src = fopen(filename, "r");
   if (!src) {
     fprintf(stderr, "%s\n", strerror(errno));
     exit(EXIT_FAILURE);
   }
 
+  firstPass(src);
   fclose(src);
 }
 

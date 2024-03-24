@@ -5,6 +5,7 @@
 
 #define NAME_MAX (32)
 #define MNEMONICS_PER_GROUP (20)
+#define INSTRUCTION_SIZE (4)
 
 // Static opcodes
 #define SOP_LOGICAL_IMM (0b00100100)
@@ -102,6 +103,8 @@ typedef struct Instruction {
     Exceptions exception;
   };
 } Instruction;
+
+const Instruction *searchInstruction(const char *mnemonic);
 
 #endif
 

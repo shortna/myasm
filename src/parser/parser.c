@@ -1,8 +1,13 @@
 #include "parser.h"
 #include "../common/erorrs.h"
-#include "../tables/tables.h"
 #include "../instructions/instructions.h"
+#include "../tables/tables.h"
 #include <ctype.h>
+
+typedef struct {
+  size_t count;
+  char fields[FIELDS_MAX][NAME_MAX];
+} fields_t;
 
 void discardComment(char *buffer) {
   while (*buffer) {
@@ -49,32 +54,36 @@ void toLower(char *line) {
   }
 }
 
-// u8 splitLine(const char *line, fields_t *fields) {
-//   fields->count = 0;
-//   u8 c = 0;
-// 
-//   while (*line) {
-//     switch (*line) {
-//     case '\n':
-//       return fields->count;
-//     case ' ':
-//     case ',':
-//     case '\t':
-//       if (c == 0) {
-//         break;
-//       }
-//       fields->count++;
-//       c = 0;
-//       break;
-//     default:
-//       fields->fields[fields->count][c] = *line;
-//       c++;
-//       break;
-//     }
-//     line++;
-//   }
-//   return fields->count;
-// }
+void toUpper(char *line) {
+  while (*line) {
+    *line = toupper(*line);
+    line++;
+  }
+}
+
+u8 splitLine(const char *line, fields_t *fields) {
+  fields->count = 0;
+  u8 i = 0;
+
+  while (*line) {
+    switch (*line) {
+    case '\n':
+      return fields->count;
+    case ' ':
+    case ',':
+    case '\t':
+      fields->count++;
+      i = 0;
+      break;
+    default:
+      fields->fields[fields->count][i] = *line;
+      i++;
+      break;
+    }
+    line++;
+  }
+  return fields->count;
+}
 
 Register parseRegister(const char *reg) {
   if (strcmp(reg, "xzr") == 0) {
@@ -110,15 +119,47 @@ u8 parseImmediate(const char *immediate, u32 *n) {
   return 1;
 }
 
+u8 parseLabel(const char *label) {
+  if (*(label + strlen(label) - 1) != ':') {
+    return 0;
+  }
+
+  while (*label) {
+    if (!isalpha(*label) && !isdigit(*label)) {
+      return 0;
+    }
+    label++;
+  }
+
+  return 1;
+}
+
+u8 parseDirective(const char *label) {
+  if (*label == '.') {
+  }
+
+  return 1;
+}
+
 int firstPass(FILE *src) {
   if (!src) {
     return -1;
   }
+  initTables();
+  size_t pc = 0;
 
   char buffer[LINE_MAX] = {0};
+  fields_t fields = {0};
+
   while (fgets(buffer, sizeof(buffer), src)) {
     preprocessLine(buffer);
-    if (buffer[strlen(buffer) - 1] == ':') {
+    if (parseLabel(buffer)) {
+      addToSym(buffer, pc, 0, ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE));
+    } else {
+      splitLine(buffer, &fields);
+      if (searchInstruction(fields.fields[0])) {
+        pc += INSTRUCTION_SIZE;
+      }
     }
   }
 
