@@ -1,8 +1,8 @@
 #ifndef MYASM_TABLES_API
 #define MYASM_TABLES_API
 
-#include "../common/erorrs.h"
-#include "../common/myasm.h"
+#include "../myasm.h"
+#include "../types.h"
 #include <elf.h>
 
 void initTables(void);
@@ -13,19 +13,8 @@ u8 addToShdr(const char *name, u32 sh_type, u64 sh_flags, Elf64_Off sh_offset,
              u32 sh_link, u32 sh_info, u64 sh_addralign, u64 sh_entsize);
 u8 addToSym(const char *name, Elf64_Addr st_value, u64 st_size, u8 st_info);
 
-typedef struct Str {
-  char *s;
-  size_t len;
-  size_t capacity;
-} Str;
-
-typedef struct SymTable {
-  Str str;
-  Elf64_Sym *items;
-  size_t count;
-  size_t capacity;
-} SymTable;
-
-extern SymTable SYMBOLS;
+void changeSymbolVisibility(size_t ind, u8 st_info);
+ssize_t searchInSym(const char *needle);
+ssize_t searchInShdr(const char *needle);
 
 #endif

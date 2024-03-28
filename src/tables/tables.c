@@ -1,7 +1,5 @@
 #include "tables.h"
-
 #define TABLE_START_CAPACITY (10)
-#define STR_START_CAPACITY UINT8_MAX
 
 #define initTable(table)                                                       \
   table.capacity = TABLE_START_CAPACITY;                                       \
@@ -18,20 +16,27 @@
   table.items = xrealloc(table.items, sizeof(*table.items) * table.capacity);
 
 // usage:
-// bool res;
+// int res;
 // searchInTable(table, needle, res)
 #define searchInTable(table, needle, res)                                      \
-  res = 0;                                                                     \
+  res = -1;                                                                    \
   char *__s = table.str.s + 1;                                                 \
   size_t __i = 1;                                                              \
   while (__i < table.count) {                                                  \
     if (strcmp(__s, needle) == 0) {                                            \
-      res = 1;                                                                 \
+      res = __i;                                                               \
       break;                                                                   \
     }                                                                          \
     __s += strlen(__s) + 1;                                                    \
     __i++;                                                                     \
   }
+
+typedef struct SymTable {
+  Str str;
+  Elf64_Sym *items;
+  size_t count;
+  size_t capacity;
+} SymTable;
 
 typedef struct ShdrTable {
   Str str;
@@ -40,42 +45,31 @@ typedef struct ShdrTable {
   size_t capacity;
 } ShdrTable;
 
-static const Elf64_Shdr TEXT = {};
-static const Elf64_Shdr DATA = {};
-static const Elf64_Shdr BSS = {};
-
 SymTable SYMBOLS = {0};
 ShdrTable SECTIONS = {0};
 
-Str initStr(void) {
-  Str s = {0};
-  s.len = 0;
-  s.capacity = STR_START_CAPACITY;
-  s.s = xmalloc(s.capacity * sizeof(*s.s));
-  *s.s = '\0';
-  return s;
-}
-
-void resizeStr(Str *str) {
-  str->capacity = str->capacity * 2;
-  str->s = xrealloc(str->s, sizeof(*str->s) * str->capacity);
-}
-
-void concatStr(Str *str1, const Str *str2) {
-  if (str1->len + str2->len >= str1->capacity) {
-    resizeStr(str1);
+ssize_t searchInSym(const char *needle) {
+  if (!needle) {
+    return -1;
   }
-  memcpy(str1->s + str1->len, str2->s, str2->len + 1);
-  str1->len = str1->len + str2->len;
+
+  ssize_t res = -1;
+  searchInTable(SYMBOLS, needle, res);
+  return res;
 }
 
-void concatCStr(Str *str1, const char *str2) {
-  size_t str2_len = strlen(str2);
-  if (str1->len + str2_len >= str1->capacity) {
-    resizeStr(str1);
+ssize_t searchInShdr(const char *needle) {
+  if (!needle) {
+    return -1;
   }
-  memcpy(str1->s + str1->len, str2, str2_len + 1);
-  str1->len = str1->len + str2_len;
+
+  ssize_t res = -1;
+  searchInTable(SECTIONS, needle, res);
+  return res;
+}
+
+void changeSymbolVisibility(size_t ind, u8 st_info) {
+  SYMBOLS.items[ind].st_info = st_info;
 }
 
 // st_size depends on type of label
@@ -87,16 +81,16 @@ void concatCStr(Str *str1, const char *str2) {
 // st_info = STT_NOTYPE and type of binding e.g STB_LOCAL or STB_GLOBAL
 u8 addToSym(const char *name, Elf64_Addr st_value, u64 st_size, u8 st_info) {
 
-  bool res;
-  searchInTable(SYMBOLS, name, res);
-  if (res) {
-    return ALREADY_DEFINED;
+  ssize_t res = searchInSym(name);
+  if (res != -1) {
+    return 0;
   }
 
   if (SYMBOLS.count == SYMBOLS.capacity) {
     resizeTable(SYMBOLS);
   }
   concatCStr(&SYMBOLS.str, name);
+  SYMBOLS.str.len++;
   Elf64_Sym *item = SYMBOLS.items + SYMBOLS.count;
   item->st_name = SYMBOLS.count;
   item->st_value = st_value;
@@ -117,16 +111,16 @@ u8 addToSym(const char *name, Elf64_Addr st_value, u64 st_size, u8 st_info) {
 u8 addToShdr(const char *name, u32 sh_type, u64 sh_flags, Elf64_Off sh_offset,
              u32 sh_link, u32 sh_info, u64 sh_addralign, u64 sh_entsize) {
 
-  bool res;
-  searchInTable(SECTIONS, name, res);
-  if (res) {
-    return ALREADY_DEFINED;
+  ssize_t res = searchInShdr(name);
+  if (res != -1) {
+    return 0;
   }
 
   if (SECTIONS.count == SECTIONS.capacity) {
     resizeTable(SECTIONS);
   }
   concatCStr(&SECTIONS.str, name);
+  SECTIONS.str.len++;
   Elf64_Shdr *item = SECTIONS.items + SECTIONS.count;
   item->sh_name = SECTIONS.count;
   item->sh_type = sh_type;
@@ -152,11 +146,14 @@ void backputchTables(size_t pc_end) {
 }
 
 void initTables(void) {
-  initTable(SECTIONS);
   initTable(SYMBOLS);
+  initTable(SECTIONS);
+  addToShdr(NULL, SHT_NULL, 0, 0, 0, 0, 0, 0);
+  addToSym(NULL, 0, 0, 0);
 }
 
 void freeTables(void) {
   freeTable(SYMBOLS);
   freeTable(SECTIONS);
 }
+
