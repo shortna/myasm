@@ -68,8 +68,12 @@ ssize_t searchInShdr(const char *needle) {
   return res;
 }
 
-void changeSymbolVisibility(size_t ind, u8 st_info) {
-  SYMBOLS.items[ind].st_info = st_info;
+ssize_t getLabelPc(const char *needle) {
+  ssize_t res = searchInSym(needle);
+  if (res == -1) {
+    return res;
+  }
+  return SYMBOLS.items[res].st_value; // return pc
 }
 
 // st_size depends on type of label
@@ -80,7 +84,6 @@ void changeSymbolVisibility(size_t ind, u8 st_info) {
 //
 // st_info = STT_NOTYPE and type of binding e.g STB_LOCAL or STB_GLOBAL
 u8 addToSym(const char *name, Elf64_Addr st_value, u64 st_size, u8 st_info) {
-
   ssize_t res = searchInSym(name);
   if (res != -1) {
     return 0;

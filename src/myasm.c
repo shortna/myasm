@@ -2,6 +2,12 @@
 #include "tables/tables.h"
 #include <ctype.h>
 
+// #ifdef __aarch64__
+#include "instructions/instructions.h"
+// #else
+// #error "You are not compling for aarch64 arhitecture"
+// #endif
+
 void *xmalloc(size_t size) {
   void *p = malloc(size);
   if (!p) {
@@ -30,7 +36,7 @@ int main(int argc, char **argv) {
   }
 
   // ir_file
-  // TYPE|VALUE|PC
+  // TYPE|VALUE|PC|INSTRUCTIONTYPE
   FILE *ir_file = tmpfile();
   if (!ir_file) {
     fprintf(stderr, "Failed to open ir file. Error: %s\n", strerror(errno));
@@ -52,34 +58,34 @@ int main(int argc, char **argv) {
 }
 
 typedef enum {
+  UNKNOWN,
   INSTRUCTION,
   DIRECTIVE,
-  LABEL,
+  LABEL_DECLARATION,
 } LineType;
 
-void discardComment(char *buffer);
+void discardComment(char *line);
 void trim(char *line);
 void preprocessLine(char *line);
-LineType getType(char *line);
+LineType getType(fields_t *fields);
 u8 splitLine(const char *line, fields_t *fields);
 
 // DIRECTIVES
-void global_d(fields_t *fields) {}
-void section_d(fields_t *fields) {}
-
-typedef struct Directive {
-  const Str name;
-  void (*f)(fields_t *fields);
-} Directive;
-
-Directive DIRECTIVES[] = {
-    {{"global", strlen("global"), strlen("global")}, &global_d},
-    {{"section", strlen("section"), strlen("section")}, &global_d},
-};
+// void global_d(fields_t *fields) {}
+// void section_d(fields_t *fields) {}
+//
+// typedef struct Directive {
+//   const Str name;
+//   void (*f)(fields_t *fields);
+// } Directive;
+//
+// Directive DIRECTIVES[] = {
+//     {{"global", strlen("global"), strlen("global")}, &global_d},
+//     {{"section", strlen("section"), strlen("section")}, &global_d},
+// };
 
 // INSTRUCTIONS
 
-#define ARM_INSTRUCTION_SIZE (4)
 #define LINE_MAX UINT8_MAX
 #define ELF64_SIZE (64)
 
@@ -104,17 +110,22 @@ void firstPass(const char *filename, FILE *ir_file) {
     splitLine(buf, &fields);
 
     LineType type = 0;
-    switch (type = getType(fields.fields[0].s)) {
+    switch (type = getType(&fields)) {
     case DIRECTIVE:
     case INSTRUCTION:
-      fprintf(ir_file, "%d|%s|%lu\n", type, buf, pc);
+      fprintf(ir_file, "%d|%s|%lu|", type, buf, pc);
       if (type == INSTRUCTION) {
         pc += ARM_INSTRUCTION_SIZE;
+        fprintf(ir_file, "%d\n", searchInstruction(&fields));
+      } else {
+        fprintf(ir_file, "%d\n", NONE);
       }
       break;
-
-    case LABEL:
+    case LABEL_DECLARATION:
       addToSym(fields.fields[0].s, pc, 0, ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE));
+      break;
+    case UNKNOWN:
+      // error here
       break;
     }
   }
@@ -126,28 +137,20 @@ void firstPass(const char *filename, FILE *ir_file) {
 
 void secondPass(FILE *ir_file, FILE *dst) {
   char buf[LINE_MAX] = {0};
-  LineType type = 0;
-  size_t pc = 0;
-
-  fseek(dst, ELF64_SIZE, SEEK_SET); // skip first 64 bytes for elf header
-
-  while (fscanf(ir_file, "%d|%s|%lu\n", &type, buf, &pc) != EOF) {
-    switch (type) {
-    case INSTRUCTION:
-      break;
-    case DIRECTIVE:
-      break;
-    }
+  while (fgets(buf, LINE_MAX, ir_file)) {
+    printf("%s", buf);
   }
+
+//  assert(0 && "secondPass is not implemented");
 }
 
-void discardComment(char *buffer) {
-  while (*buffer) {
-    if (*buffer == '/' && *(buffer + 1) == '/') {
-      *buffer = '\0';
+void discardComment(char *line) {
+  while (*line) {
+    if (*line == '/' && *(line + 1) == '/') {
+      *line = '\0';
       return;
     }
-    buffer++;
+    line++;
   }
 }
 
@@ -179,14 +182,22 @@ void preprocessLine(char *line) {
   trim(line);
 }
 
-LineType getType(char *line) {
+LineType getType(fields_t *fields) {
+  char *line = fields->fields[0].s;
   if (line[strlen(line) - 1] == ':') {
     line[strlen(line) - 1] = '\0';
-    return LABEL;
+    return LABEL_DECLARATION;
   }
 
+  // add more sophisticated check for directives
   if (*line == '.') {
     return DIRECTIVE;
+  }
+
+  InstructionType t = NONE;
+  t = searchInstruction(fields);
+  if (t == NONE) {
+    return UNKNOWN;
   }
 
   return INSTRUCTION;
@@ -211,6 +222,21 @@ u8 splitLine(const char *line, fields_t *fields) {
       fields->n_fields++;
       i = &fields->fields[fields->n_fields].len;
       break;
+    case '[':
+      if (*i != 0) {
+        // if we have char at that string
+        // wrap it and go to the next
+        fields->fields[fields->n_fields].s[*i] = '\0';
+        fields->n_fields++;
+        i = &fields->fields[fields->n_fields].len;
+      }
+      while (*line != ']') {
+        fields->fields[fields->n_fields].s[*i] = *line;
+        *i += 1;
+        line++;
+      }
+      fields->fields[fields->n_fields].s[*i] = ']';
+      *i += 1;
     default:
       fields->fields[fields->n_fields].s[*i] = *line;
       *i += 1;

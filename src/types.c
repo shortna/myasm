@@ -1,4 +1,5 @@
 #include "types.h"
+#include <ctype.h>
 
 Str initStr(void) {
   Str s = {0};
@@ -53,5 +54,11 @@ void freeFields(fields_t *fields) {
   }
   for (u8 i = 0; i < FIELDS_MAX; i++) {
     free(fields->fields[i].s);
+  }
+}
+
+void toUpper(Str *line) {
+  for (size_t i = 0; i < line->len; i++) {
+    line->s[i] = toupper(line->s[i]);
   }
 }
