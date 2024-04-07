@@ -1,6 +1,10 @@
 #include "myasm.h"
 #include "tables/tables.h"
 #include <ctype.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 // #ifdef __aarch64__
 #include "instructions/instructions.h"
@@ -67,7 +71,7 @@ typedef enum {
 void discardComment(char *line);
 void trim(char *line);
 void preprocessLine(char *line);
-LineType getType(fields_t *fields);
+LineType getLineType(fields_t *fields);
 u8 splitLine(const char *line, fields_t *fields);
 
 // DIRECTIVES
@@ -110,7 +114,7 @@ void firstPass(const char *filename, FILE *ir_file) {
     splitLine(buf, &fields);
 
     LineType type = 0;
-    switch (type = getType(&fields)) {
+    switch (type = getLineType(&fields)) {
     case DIRECTIVE:
     case INSTRUCTION:
       fprintf(ir_file, "%d|%s|%lu|", type, buf, pc);
@@ -182,7 +186,7 @@ void preprocessLine(char *line) {
   trim(line);
 }
 
-LineType getType(fields_t *fields) {
+LineType getLineType(fields_t *fields) {
   char *line = fields->fields[0].s;
   if (line[strlen(line) - 1] == ':') {
     line[strlen(line) - 1] = '\0';
@@ -237,6 +241,7 @@ u8 splitLine(const char *line, fields_t *fields) {
       }
       fields->fields[fields->n_fields].s[*i] = ']';
       *i += 1;
+      break;
     default:
       fields->fields[fields->n_fields].s[*i] = *line;
       *i += 1;

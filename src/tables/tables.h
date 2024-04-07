@@ -1,7 +1,6 @@
 #ifndef MYASM_TABLES_API
 #define MYASM_TABLES_API
 
-#include "../myasm.h"
 #include "../types.h"
 #include <elf.h>
 

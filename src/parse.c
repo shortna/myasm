@@ -1,7 +1,9 @@
 #include "parse.h"
 #include "tables/tables.h"
+#include <stdlib.h>
+#include <string.h>
 
-Argument getType(const Str *s) {
+Argument getArgumentType(const Str *s) {
   // register
   i64 n;
   if ((n = parseRegister(s).n) != -1) {

@@ -1,5 +1,6 @@
 #include "instructions.h"
 #include "../parse.h"
+#include <string.h>
 
 // Static opcodes
 #define SOP_LOGICAL_IMM (0b00100100)
@@ -44,8 +45,8 @@ Signature getSignature(const fields_t *instruction) {
   uint8_t *s_arr = ((uint8_t*) &s) + 1;
   const Str *f = instruction->fields + 1;
 
-  for (size_t i = 0; i < instruction->n_fields - 1; i++) {
-    s_arr[i] = getType(f + i);
+  for (u8 i = 0; i < instruction->n_fields - 1; i++) {
+    s_arr[i] = getArgumentType(f + i);
   }
   *s_arr = instruction->n_fields - 1;
 

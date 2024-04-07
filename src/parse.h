@@ -39,9 +39,9 @@ typedef struct {
   ExtendType t;
 } Extend;
 
-static Extend parseExtend(const Str *label, const Str *amount) {
-  return (Extend){0};
-}
+// static Extend parseExtend(const Str *label, const Str *amount) {
+//   return (Extend){0};
+// }
 
-Argument getType(const Str *s);
+Argument getArgumentType(const Str *s);
 #endif

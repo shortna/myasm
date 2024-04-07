@@ -1,5 +1,7 @@
 #include "types.h"
+#include <stdlib.h>
 #include <ctype.h>
+#include <string.h>
 
 Str initStr(void) {
   Str s = {0};

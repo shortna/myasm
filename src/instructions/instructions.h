@@ -1,7 +1,6 @@
 #ifndef MYASM_INSTRUCTIONS
 #define MYASM_INSTRUCTIONS
 
-#include "../myasm.h"
 #include "../types.h"
 
 #define ARM_INSTRUCTION_SIZE (4)

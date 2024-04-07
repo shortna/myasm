@@ -1,4 +1,6 @@
 #include "tables.h"
+#include <stdlib.h>
+#include <string.h>
 #define TABLE_START_CAPACITY (10)
 
 #define initTable(table)                                                       \

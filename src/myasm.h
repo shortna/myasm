@@ -2,12 +2,10 @@
 #define MYASM_MAIN
 
 #include <assert.h>
-#include <errno.h>
 #include <inttypes.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <stddef.h>
+#include <sys/types.h>
 #include <stdbool.h>
-#include <string.h>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
