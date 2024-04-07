@@ -4,34 +4,43 @@
 #define TABLE_START_CAPACITY (10)
 
 #define initTable(table)                                                       \
-  table.capacity = TABLE_START_CAPACITY;                                       \
-  table.count = 0;                                                             \
-  table.items = xmalloc(table.capacity * sizeof(*table.items));                \
-  table.str = initStr();
+  do {                                                                         \
+    table.capacity = TABLE_START_CAPACITY;                                     \
+    table.count = 0;                                                           \
+    table.items = xmalloc(table.capacity * sizeof(*table.items));              \
+    table.str = initStr();                                                     \
+  } while (0)
 
 #define freeTable(table)                                                       \
-  free(table.str.s);                                                           \
-  free(table.items);
+  do {                                                                         \
+    free(table.str.s);                                                         \
+    free(table.items);                                                         \
+  } while (0)
 
 #define resizeTable(table)                                                     \
-  table.capacity *= 2;                                                         \
-  table.items = xrealloc(table.items, sizeof(*table.items) * table.capacity);
+  do {                                                                         \
+    table.capacity *= 2;                                                       \
+    table.items =                                                              \
+        xrealloc(table.items, sizeof(*table.items) * table.capacity);          \
+  } while (0)
 
 // usage:
 // int res;
 // searchInTable(table, needle, res)
 #define searchInTable(table, needle, res)                                      \
-  res = -1;                                                                    \
-  char *__s = table.str.s + 1;                                                 \
-  size_t __i = 1;                                                              \
-  while (__i < table.count) {                                                  \
-    if (strcmp(__s, needle) == 0) {                                            \
-      res = __i;                                                               \
-      break;                                                                   \
+  do {                                                                         \
+    res = -1;                                                                  \
+    char *__s = table.str.s + 1;                                               \
+    size_t __i = 1;                                                            \
+    while (__i < table.count) {                                                \
+      if (strcmp(__s, needle) == 0) {                                          \
+        res = __i;                                                             \
+        break;                                                                 \
+      }                                                                        \
+      __s += strlen(__s) + 1;                                                  \
+      __i++;                                                                   \
     }                                                                          \
-    __s += strlen(__s) + 1;                                                    \
-    __i++;                                                                     \
-  }
+  } while (0)
 
 typedef struct SymTable {
   Str str;
