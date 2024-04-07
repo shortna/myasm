@@ -1,14 +1,30 @@
 #include "parse.h"
+#include "tables/tables.h"
 
 Argument getType(const Str *s) {
-  const char *str = s->s;
-  if (strcmp(str, "SP") == 0 || strcmp(str, "WSP") == 0) {
-    return SP;
-  } 
-
-  if (*str == '#') {
-    for (size_t i = 0; i < s->len; i++) {
+  // register
+  i64 n;
+  if ((n = parseRegister(s).n) != -1) {
+    if (n == 30) {
+      return SP;
     }
+    return REGISTER;
+  }
+
+  // immediate
+  if (parseImmediate(s, &n)) {
+    return IMMEDIATE;
+  }
+  
+  // label
+  if (parseLabel(s) != -1) {
+    return LABEL;
+  }
+
+  // shift
+  if (strcmp(s->s, "lsl") == 0 || strcmp(s->s, "lsr") == 0 ||
+      strcmp(s->s, "asr") == 0 || strcmp(s->s, "ror") == 0) {
+    return SHIFT;
   }
 
   return NO_ARG;
@@ -32,7 +48,13 @@ Register parseRegister(const Str *reg) {
     }
   }
 
-  long res = strtol(reg->s + 1, NULL, 10);
+  char *end = NULL;
+  long res = strtol(reg->s + 1, &end, 10);
+
+  if (end != reg->s + reg->len) {
+    return (Register){false, -1};
+  }
+
   if (res >= 0 || res <= 29) {
     if (*reg->s == 'X') {
       return (Register){true, res};

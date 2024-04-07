@@ -41,12 +41,13 @@ Signature getSignature(const fields_t *instruction) {
     return s;
   }
 
-  uint8_t *s_arr = (uint8_t*) &s;
+  uint8_t *s_arr = ((uint8_t*) &s) + 1;
   const Str *f = instruction->fields + 1;
 
-  //  for (size_t i = 0; i < instruction->n_fields - 1; i++) {
-  //    s_array[i] = ;
-  //  }
+  for (size_t i = 0; i < instruction->n_fields - 1; i++) {
+    s_arr[i] = getType(f + i);
+  }
+  *s_arr = instruction->n_fields - 1;
 
   return s;
 }

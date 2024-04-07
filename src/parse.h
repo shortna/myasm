@@ -1,8 +1,6 @@
 #ifndef MYASM_PARSER
 #define MYASM_PARSER
 
-#include "myasm.h"
-#include "tables/tables.h"
 #include "types.h"
 
 typedef struct {
@@ -44,4 +42,6 @@ typedef struct {
 static Extend parseExtend(const Str *label, const Str *amount) {
   return (Extend){0};
 }
+
+Argument getType(const Str *s);
 #endif
