@@ -10,7 +10,7 @@ typedef struct {
 
 Register parseRegister(const Str *reg);
 
-typedef enum { SH_LSL = 0, SH_LSR = 1, SH_ASR = 2, SH_ROR = 3 } ShiftType;
+typedef enum {SH_LSL = 0, SH_LSR = 1, SH_ASR = 2, SH_ROR = 3} ShiftType;
 
 typedef struct {
   u8 imm;
@@ -19,7 +19,11 @@ typedef struct {
 
 u8 parseShift(const Str *shift_type, const Str *amount, Shift *sh);
 
-u8 parseImmediate(const Str *imm, i64 *res);
+u8 parseImmediateU8(const Str *imm, u8 *res);
+u8 parseImmediateU16(const Str *imm, u16 *res);
+u8 parseImmediateU32(const Str *imm, u32 *res);
+u8 parseImmediateU64(const Str *imm, u64 *res);
+
 ssize_t parseLabel(const Str *label);
 
 typedef enum {

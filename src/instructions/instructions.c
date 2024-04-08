@@ -105,8 +105,8 @@ u8 assembleLogicalImm(fields_t *instruction, u32 *assembled_instruction) {
     return 0;
   }
 
-  i64 res = 0;
-  if (!parseImmediate(instruction->fields + 3, &res)) {
+  u64 res = 0;
+  if (!parseImmediateU64(instruction->fields + 3, &res)) {
     // error here
     return 0;
   }
@@ -159,7 +159,7 @@ u8 assembleLogicalShReg(fields_t *instruction, u32 *assembled_instruction) {
     return 0;
   }
 
-  Shift sh = {LSL, 0};
+  Shift sh = {SH_LSL, 0};
   if (instruction->n_fields > 4) {
     if (!parseShift(instruction->fields + 4, instruction->fields + 5, &sh)) {
       // error here
@@ -204,7 +204,52 @@ u8 assembleLogicalShReg(fields_t *instruction, u32 *assembled_instruction) {
   return 1;
 }
 
-u8 assembleMoveWide(fields_t *instruction, u32 *assembled_instruction) {}
+u8 assembleMoveWide(fields_t *instruction, u32 *assembled_instruction) {
+  MoveWide i = {0};
+  *assembled_instruction = 0;
+
+  Register Rd = parseRegister(instruction->fields + 1);
+
+  u16 res = 0;
+  if (!parseImmediateU16(instruction->fields + 2, &res)) {
+    // error here
+    return 0;
+  }
+
+  i.sf = Rd.extended;
+
+  Shift sh = {SH_LSL, 0};
+  if (instruction->n_fields > 3) {
+    if (!parseShift(instruction->fields + 3, instruction->fields + 4, &sh)) {
+      // error here
+      return 0;
+    }
+
+    if (i.sf && (sh.imm > 48 || sh.imm % 16 != 0)) {
+      // error here
+      return 0;
+    } else if (sh.imm != 0 || sh.imm != 16) {
+      // error here
+      return 0;
+    }
+  }
+
+  i.opc = instructionIndex(MOVEWIDE, instruction->fields);
+  if (i.opc != 0) { // because opc 0b01 not allocated
+    i.opc += 1;
+  }
+
+  i.s_op = SOP_MOVE_WIDE;
+  i.hw = sh.imm / 16;
+  i.Rd = Rd.n;
+  i.imm16 = res;
+
+  *assembled_instruction |= (i.sf << 31) | (i.opc << 29) | (i.s_op << 23) |
+                           (i.hw << 21) | (i.imm16 << 5) | i.Rd;
+
+  return 1;
+}
+
 u8 assembleAddSubImm(fields_t *instruction, u32 *assembled_instruction) {}
 u8 assemblePcRelAddressing(fields_t *instruction, u32 *assembled_instruction) {}
 u8 assembleException(fields_t *instruction, u32 *assembled_instruction) {}
