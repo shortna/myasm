@@ -105,8 +105,8 @@ u8 assembleLogicalImm(fields_t *instruction, u32 *assembled_instruction) {
     return 0;
   }
 
-  u64 res = 0;
-  if (!parseImmediateU64(instruction->fields + 3, &res)) {
+  u64 imm = 0;
+  if (!parseImmediateU64(instruction->fields + 3, &imm)) {
     // error here
     return 0;
   }
@@ -120,7 +120,7 @@ u8 assembleLogicalImm(fields_t *instruction, u32 *assembled_instruction) {
     return 0;
   }
 
-  if (!encodeLogicalImmediate(res, &i.N, &i.immr, &i.imms)) {
+  if (!encodeLogicalImmediate(imm, &i.N, &i.immr, &i.imms)) {
     // error here
     return 0;
   }
@@ -185,7 +185,7 @@ u8 assembleLogicalShReg(fields_t *instruction, u32 *assembled_instruction) {
   //  11  1  111  7
 
   i.opc = instructionIndex(LOGICAL_SH_REG, instruction->fields);
-  i.N = i.opc & 0b1U;
+  i.N = i.opc & 0b1;
   i.opc = i.opc >> 1;
 
   i.s_op = SOP_LOGICAL_SH_REG;
@@ -225,6 +225,10 @@ u8 assembleMoveWide(fields_t *instruction, u32 *assembled_instruction) {
       return 0;
     }
 
+    if (sh.t != SH_LSL) {
+      // error here
+      return 0;
+    }
     if (i.sf && (sh.imm > 48 || sh.imm % 16 != 0)) {
       // error here
       return 0;
@@ -250,9 +254,78 @@ u8 assembleMoveWide(fields_t *instruction, u32 *assembled_instruction) {
   return 1;
 }
 
-u8 assembleAddSubImm(fields_t *instruction, u32 *assembled_instruction) {}
-u8 assemblePcRelAddressing(fields_t *instruction, u32 *assembled_instruction) {}
+u8 assembleAddSubImm(fields_t *instruction, u32 *assembled_instruction) {
+  AddSubImm i = {0};
+  *assembled_instruction = 0;
+
+  Register Rd = parseRegister(instruction->fields + 1);
+  Register Rn = parseRegister(instruction->fields + 2);
+
+  if (Rd.n == -1 || Rn.n == -1) {
+    // error here
+    return 0;
+  }
+
+  if (Rd.extended && Rn.extended) {
+    i.sf = 1;
+  } else if (!Rd.extended && !Rn.extended) {
+    i.sf = 0;
+  } else {
+    // error here
+    return 0;
+  }
+
+  u16 imm;
+  if (!parseImmediateU16(instruction->fields + 3, &imm)) {
+    // error here
+    return 0;
+  }
+
+  if (imm > 4095) {
+    // error here
+    return 0;
+  }
+
+  Shift sh = {SH_LSL, 0};
+  if (instruction->n_fields > 4) {
+    if (!parseShift(instruction->fields + 3, instruction->fields + 4, &sh)) {
+      // error here
+      return 0;
+    }
+
+    if (sh.t != SH_LSL || sh.imm != 12) {
+      // error here
+      return 0;
+    }
+  }
+
+  // mnemonic   op S  j  jb
+  // ADD        0  0  0  00
+  // ADDS       0  1  1  01
+  // SUB        1  0  2  10
+  // SUBS       1  1  3  11
+
+  i.op = instructionIndex(ADDSUB_IMM, instruction->fields);
+  i.S = i.op & 0b1;
+  i.op = i.op >> 1;
+
+  i.s_op = SOP_ADD_SUB_IMM;
+
+  i.Rd = Rd.n;
+  i.Rn = Rn.n;
+  
+  i.sh = sh.imm == 12;
+  i.imm12 = imm;
+
+  *assembled_instruction |= (i.sf << 31) | (i.op << 30) | (i.S << 29) |
+                            (i.s_op << 23) | (i.sh << 22) | (i.imm12 << 10) |
+                            (i.Rn << 5) | i.Rd;
+
+  return 1;
+}
+
 u8 assembleException(fields_t *instruction, u32 *assembled_instruction) {}
+u8 assemblePcRelAddressing(fields_t *instruction, u32 *assembled_instruction) {}
 
 u32 assemble(fields_t *instruction) {
   if (!instruction) { // sanity check
