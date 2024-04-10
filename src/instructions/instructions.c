@@ -18,7 +18,8 @@ static const Instruction INSTRUCTIONS[] = {
     {{"ADD", "ADDS", "SUB", "SUBS"}, ADDSUB_IMM, {4, REGISTER | SP, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
     {{"AND", "ORR", "EOR", "ANDS"}, LOGICAL_IMM, {3, REGISTER | SP, REGISTER, IMMEDIATE}},
     {{"AND", "BIC", "ORR", "ORN", "EOR", "EON", "ANDS", "BICS"}, LOGICAL_SH_REG, {4, REGISTER, REGISTER, REGISTER, SHIFT | OPTIONAL}},
-    {{"SVC", "HVC", "SMC", "BRK", "HLT", "TCANCEL", "DCPS1", "DCPS2", "DCPS3"}, EXCEPTION, {1, IMMEDIATE}},
+    {{"SVC", "HVC", "SMC", "BRK", "HLT", "TCANCEL"}, EXCEPTION, {1, IMMEDIATE}},
+    {{"DCPS1", "DCPS2", "DCPS3"}, EXCEPTION, {1, IMMEDIATE | OPTIONAL}},
 };
 
 // s1 must be from INSTRUCTIONS variable
@@ -324,7 +325,40 @@ u8 assembleAddSubImm(fields_t *instruction, u32 *assembled_instruction) {
   return 1;
 }
 
-u8 assembleException(fields_t *instruction, u32 *assembled_instruction) {}
+u8 assembleException(fields_t *instruction, u32 *assembled_instruction) {
+  Exceptions i = {0};
+  *assembled_instruction = 0;
+
+  u16 imm = 0;
+  if (instruction->n_fields > 1) {
+    if (!parseImmediateU16(instruction->fields + 1, &imm)) {
+      // error here
+      return 0;
+    }
+    i.opc = instructionIndex(EXCEPTION, instruction->fields);
+    if (i.opc <= 2) {
+      i.LL = i.opc + 1;
+      i.opc = 0;
+    } else {
+      i.LL = 0;
+      i.opc = i.opc - 2;
+    }
+  } else {
+    i.opc = 0b101;
+    // get last char of string and convert to digit
+    i.LL = instruction->fields->s[instruction->fields->len - 1] - '0'; 
+  }
+
+  i.sop = SOP_EXCEPTIONS;
+  i.imm16 = imm;
+  i.op2 = 0;
+
+  *assembled_instruction |=
+      (i.sop << 24) | (i.opc << 21) | (i.imm16 << 5) | (i.op2 << 2) | i.LL;
+
+  return 1;
+}
+
 u8 assemblePcRelAddressing(fields_t *instruction, u32 *assembled_instruction) {}
 
 u32 assemble(fields_t *instruction) {
