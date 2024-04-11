@@ -3,7 +3,7 @@
 
 #include "myasm.h"
 #define STR_START_CAPACITY UINT8_MAX
-#define FIELDS_MAX (7)
+#define FIELDS_MAX (10)
 
 typedef enum {
   NO_ARG = 0,

@@ -22,14 +22,15 @@ static const Instruction INSTRUCTIONS[] = {
     {{"DCPS1", "DCPS2", "DCPS3"}, EXCEPTION, {1, IMMEDIATE | OPTIONAL}},
 };
 
-// s1 must be from INSTRUCTIONS variable
+// s1 must be from INSTRUCTIONS
 // second signature compares against first, order matters
 bool compareSigantures(Signature s1, Signature s2) {
   u8 i = 0;
   u8 *s1_arr = ((u8 *)&s1) + 1;
   u8 *s2_arr = ((u8 *)&s2) + 1;
   while (i < s1.n_args) {
-    if ((s1_arr[i] & s2_arr[i]) == 0 && (s1_arr[i] & OPTIONAL) == 0) {
+    // if args differs from what expected and optional not set
+    if ((s1_arr[i] & s2_arr[i]) == 0 && !(s1_arr[i] & OPTIONAL)) {
       return false;
     }
     i++;
@@ -94,9 +95,9 @@ u8 encodeLogicalImmediate(u64 imm, u8 *N, u8 *immr, u8 *imms) {
   assert(0 && "encodeLogicalImmediate Not Implemented");
 }
 
-u8 assembleLogicalImm(fields_t *instruction, u32 *assembled_instruction) {
+u32 assembleLogicalImm(fields_t *instruction) {
   LogicalImm i = {0};
-  *assembled_instruction = 0;
+  u32 assembled_instruction = 0;
 
   Register Rd = parseRegister(instruction->fields + 1);
   Register Rn = parseRegister(instruction->fields + 2);
@@ -132,15 +133,15 @@ u8 assembleLogicalImm(fields_t *instruction, u32 *assembled_instruction) {
   i.Rn = Rn.n;
   i.Rd = Rd.n;
 
-  *assembled_instruction |= (i.sf << 31) | (i.opc << 29) | (i.s_op << 23) |
+  assembled_instruction |= (i.sf << 31) | (i.opc << 29) | (i.s_op << 23) |
                            (i.N << 22) | (i.immr << 16) | (i.imms << 10) |
                            (i.Rn << 5) | i.Rd;
-  return 1;
+  return assembled_instruction;
 }
 
-u8 assembleLogicalShReg(fields_t *instruction, u32 *assembled_instruction) {
+u32 assembleLogicalShReg(fields_t *instruction) {
   LogicalShReg i = {0};
-  *assembled_instruction = 0;
+  u32 assembled_instruction = 0;
 
   Register Rd = parseRegister(instruction->fields + 1);
   Register Rn = parseRegister(instruction->fields + 2);
@@ -175,15 +176,15 @@ u8 assembleLogicalShReg(fields_t *instruction, u32 *assembled_instruction) {
     }
   }
 
-  // opc  N  jb   j
-  //  00  0  000  0
-  //  00  1  001  1
-  //  01  0  010  2
-  //  01  1  011  3
-  //  10  0  100  4
-  //  10  1  101  5
-  //  11  0  110  6
-  //  11  1  111  7
+  // opc  N  j  jb
+  //  00  0  0  000
+  //  00  1  1  001
+  //  01  0  2  010
+  //  01  1  3  011
+  //  10  0  4  100
+  //  10  1  5  101
+  //  11  0  6  110
+  //  11  1  7  111
 
   i.opc = instructionIndex(LOGICAL_SH_REG, instruction->fields);
   i.N = i.opc & 0b1;
@@ -198,16 +199,16 @@ u8 assembleLogicalShReg(fields_t *instruction, u32 *assembled_instruction) {
   i.sh = sh.t;
   i.imm6 = sh.imm;
 
-  *assembled_instruction |= (i.sf << 31) | (i.opc << 29) | (i.s_op << 24) |
+  assembled_instruction |= (i.sf << 31) | (i.opc << 29) | (i.s_op << 24) |
                            (i.sh << 22) | (i.N << 21) | (i.Rm << 16) |
                            (i.imm6 << 10) | (i.Rn << 5) | i.Rd;
 
-  return 1;
+  return assembled_instruction;
 }
 
-u8 assembleMoveWide(fields_t *instruction, u32 *assembled_instruction) {
+u32 assembleMoveWide(fields_t *instruction) {
   MoveWide i = {0};
-  *assembled_instruction = 0;
+  u32 assembled_instruction = 0;
 
   Register Rd = parseRegister(instruction->fields + 1);
 
@@ -249,15 +250,15 @@ u8 assembleMoveWide(fields_t *instruction, u32 *assembled_instruction) {
   i.Rd = Rd.n;
   i.imm16 = res;
 
-  *assembled_instruction |= (i.sf << 31) | (i.opc << 29) | (i.s_op << 23) |
+  assembled_instruction |= (i.sf << 31) | (i.opc << 29) | (i.s_op << 23) |
                            (i.hw << 21) | (i.imm16 << 5) | i.Rd;
 
-  return 1;
+  return assembled_instruction;
 }
 
-u8 assembleAddSubImm(fields_t *instruction, u32 *assembled_instruction) {
+u32 assembleAddSubImm(fields_t *instruction) {
   AddSubImm i = {0};
-  *assembled_instruction = 0;
+  u32 assembled_instruction = 0;
 
   Register Rd = parseRegister(instruction->fields + 1);
   Register Rn = parseRegister(instruction->fields + 2);
@@ -314,20 +315,23 @@ u8 assembleAddSubImm(fields_t *instruction, u32 *assembled_instruction) {
 
   i.Rd = Rd.n;
   i.Rn = Rn.n;
-  
+
   i.sh = sh.imm == 12;
   i.imm12 = imm;
 
-  *assembled_instruction |= (i.sf << 31) | (i.op << 30) | (i.S << 29) |
+  assembled_instruction |= (i.sf << 31) | (i.op << 30) | (i.S << 29) |
                             (i.s_op << 23) | (i.sh << 22) | (i.imm12 << 10) |
                             (i.Rn << 5) | i.Rd;
 
-  return 1;
+  return assembled_instruction;
 }
 
-u8 assembleException(fields_t *instruction, u32 *assembled_instruction) {
+u32 assembleException(fields_t *instruction) {
   Exceptions i = {0};
-  *assembled_instruction = 0;
+  u32 assembled_instruction = 0;
+
+  i.LL = instructionIndex(EXCEPTION, instruction->fields) + 1;
+  i.opc = 0b101;
 
   u16 imm = 0;
   if (instruction->n_fields > 1) {
@@ -335,31 +339,41 @@ u8 assembleException(fields_t *instruction, u32 *assembled_instruction) {
       // error here
       return 0;
     }
-    i.opc = instructionIndex(EXCEPTION, instruction->fields);
-    if (i.opc <= 2) {
-      i.LL = i.opc + 1;
+
+    // opc  LL  mnemonic
+    // 101  01  DCPS1
+    // 101  10  DCPS2
+    // 101  11  DCPS3
+    // do not process DCPS* instructions since the already set
+    if (*instruction->fields->s != 'D') {
+      // opc  LL  mnemonic
+      // 000  01  SVC
+      // 000  10  HVC
+      // 000  11  SMC
+      // LL already set
       i.opc = 0;
-    } else {
-      i.LL = 0;
-      i.opc = i.opc - 2;
+      if (i.LL - 1 > 2) {
+        // opc  LL  0bLL  0bLL - 1  (0bLL - 1) >> 1  mnemonic
+        // 001  4   0100  0011      0001             BRK
+        // 010  5   0101  0100      0010             HLT
+        // 010  6   0110  0101      0010             TCANCEL 
+        i.opc = (i.LL - 1) >> 1;
+        i.LL = 0;
+      }
     }
-  } else {
-    i.opc = 0b101;
-    // get last char of string and convert to digit
-    i.LL = instruction->fields->s[instruction->fields->len - 1] - '0'; 
   }
 
   i.sop = SOP_EXCEPTIONS;
   i.imm16 = imm;
   i.op2 = 0;
 
-  *assembled_instruction |=
+  assembled_instruction |=
       (i.sop << 24) | (i.opc << 21) | (i.imm16 << 5) | (i.op2 << 2) | i.LL;
 
-  return 1;
+  return assembled_instruction;
 }
 
-u8 assemblePcRelAddressing(fields_t *instruction, u32 *assembled_instruction) {}
+u32 assemblePcRelAddressing(fields_t *instruction) {}
 
 u32 assemble(fields_t *instruction) {
   if (!instruction) { // sanity check
@@ -370,25 +384,25 @@ u32 assemble(fields_t *instruction) {
   u32 i = 0;
   switch (type) {
   case NONE:
-    // warning unknown instruction here
+    // warning unknown instruction
     return 0;
   case LOGICAL_IMM:
-    assembleLogicalImm(instruction, &i);
+    i = assembleLogicalImm(instruction);
     break;
   case LOGICAL_SH_REG:
-    assembleLogicalShReg(instruction, &i);
+    i = assembleLogicalShReg(instruction);
     break;
   case MOVEWIDE:
-    assembleMoveWide(instruction, &i);
+    i = assembleMoveWide(instruction);
     break;
   case ADDSUB_IMM:
-    assembleAddSubImm(instruction, &i);
+    i = assembleAddSubImm(instruction);
     break;
   case PCRELADDRESSING:
-    assemblePcRelAddressing(instruction, &i);
+    i = assemblePcRelAddressing(instruction);
     break;
   case EXCEPTION:
-    assembleException(instruction, &i);
+    i = assembleException(instruction);
     break;
   }
 

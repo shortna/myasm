@@ -72,18 +72,18 @@ i64 parseDigit(const Str *digit) {
     return -1;
   }
 
-  size_t i = 0;
-  if (*digit->s == '#') {
-    i++;
+  const char *s = digit->s;
+  if (*s == '#') {
+    s++;
   }
 
   u8 base = 10;
-  if (*(digit->s + i + 1) == 'x') {
+  if (*(s + 1) == 'x') {
     base = 16;
   }
 
   char *end = NULL;
-  i64 res = strtoll(digit->s, &end, base);
+  i64 res = strtoll(s, &end, base);
   if (end == digit->s + digit->len) {
     return res;
   }
@@ -136,10 +136,6 @@ u8 parseImmediateU32(const Str *imm, u32 *res) {
 u8 parseImmediateU64(const Str *imm, u64 *res) {
   i64 n = parseDigit(imm);
   if (n == -1) {
-    return 0;
-  }
-
-  if ((u64)n > UINT32_MAX) {
     return 0;
   }
 
