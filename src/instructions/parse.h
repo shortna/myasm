@@ -1,7 +1,7 @@
 #ifndef MYASM_PARSER
 #define MYASM_PARSER
 
-#include "types.h"
+#include "../types.h"
 
 typedef struct {
   bool extended;
@@ -23,8 +23,6 @@ u8 parseImmediateU8(const Str *imm, u8 *res);
 u8 parseImmediateU16(const Str *imm, u16 *res);
 u8 parseImmediateU32(const Str *imm, u32 *res);
 u8 parseImmediateU64(const Str *imm, u64 *res);
-
-ssize_t parseLabel(const Str *label);
 
 typedef enum {
   UXTB,

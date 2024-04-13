@@ -64,8 +64,6 @@ typedef struct Excpetions {
   u8 LL;     // 2 bit specifies instruction
 } Exceptions;
 
-// structure have 7 fields just to fit in 64bits
-// arm instructions have at max 4 arguments
 typedef struct Signature {
   u8 n_args;
   u8 a1;
@@ -77,22 +75,10 @@ typedef struct Signature {
   u8 a7;
 } Signature;
 
-typedef enum {
-  NONE,
-  LOGICAL_IMM,
-  LOGICAL_SH_REG,
-  MOVEWIDE,
-  ADDSUB_IMM,
-  PCRELADDRESSING,
-  EXCEPTION,
-} InstructionType;
-
 typedef struct Instruction {
   char const *const mnemonic[10];
   const InstructionType type;
   const Signature s;
 } Instruction;
-
-InstructionType searchInstruction(const fields_t *fields);
 
 #endif

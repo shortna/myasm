@@ -3,9 +3,9 @@
 
 #include "../types.h"
 #include <elf.h>
+#define ELF64_SIZE (64)
 
 void initTables(void);
-void backputchTables(size_t pc_end);
 void freeTables(void);
 
 u8 addToShdr(const char *name, u32 sh_type, u64 sh_flags, Elf64_Off sh_offset,
@@ -16,5 +16,6 @@ ssize_t searchInSym(const char *needle);
 ssize_t searchInShdr(const char *needle);
 
 ssize_t getLabelPc(const char *needle);
+Elf64_Ehdr getHeader();
 
 #endif

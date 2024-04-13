@@ -1,14 +1,17 @@
 #include "instructions.h"
-#include "../parse.h"
+#include "parse.h"
+#include "../assemble.h"
 #include <string.h>
 
 // Static opcodes
-#define SOP_LOGICAL_IMM (0b00100100)
-#define SOP_LOGICAL_SH_REG (0b00001010)
-#define SOP_MOVE_WIDE (0b00100101)
-#define SOP_ADD_SUB_IMM (0b00100010)
-#define SOP_PC_REl (0b00010000)
-#define SOP_EXCEPTIONS (0b11010100)
+#define SOP_LOGICAL_IMM (36)    // (0b00100100)
+#define SOP_LOGICAL_SH_REG (10) // (0b00001010)
+#define SOP_MOVE_WIDE (37)      // (0b00100101)
+#define SOP_ADD_SUB_IMM (34)    // (0b00100010)
+#define SOP_PC_REl (16)         // (0b00010000)
+#define SOP_EXCEPTIONS (212)    // (0b11010100)
+
+u8 INSTRUCTION_SIZE = ARM_INSTRUCTION_SIZE;
 
 // IMPORTANT
 // instruction mnemonic MUST be in order of incresing opc field
@@ -41,7 +44,7 @@ bool compareSigantures(Signature s1, Signature s2) {
 
 Signature getSignature(const fields_t *instruction) {
   Signature s = {0};
-  // case for NOP instruction
+
   if (instruction->n_fields == 1) {
     return s;
   }
@@ -52,14 +55,14 @@ Signature getSignature(const fields_t *instruction) {
   for (u8 i = 0; i < instruction->n_fields - 1; i++) {
     s_arr[i] = getArgumentType(f + i);
   }
-  *s_arr = instruction->n_fields - 1;
+  s.n_args = instruction->n_fields - 1;
 
   return s;
 }
 
 InstructionType searchInstruction(const fields_t *fields) {
   Signature s = getSignature(fields);
-  const char *mnemonic = fields->fields[0].s;
+  const char *mnemonic = fields->fields->s;
 
   for (size_t i = 0; i < sizeof(INSTRUCTIONS) / sizeof(*INSTRUCTIONS); i++) {
     if (compareSigantures(INSTRUCTIONS[i].s, s)) {
@@ -187,7 +190,7 @@ u32 assembleLogicalShReg(fields_t *instruction) {
   //  11  1  7  111
 
   i.opc = instructionIndex(LOGICAL_SH_REG, instruction->fields);
-  i.N = i.opc & 0b1;
+  i.N = i.opc & 1;
   i.opc = i.opc >> 1;
 
   i.s_op = SOP_LOGICAL_SH_REG;
@@ -234,7 +237,7 @@ u32 assembleMoveWide(fields_t *instruction) {
     if (i.sf && (sh.imm > 48 || sh.imm % 16 != 0)) {
       // error here
       return 0;
-    } else if (sh.imm != 0 || sh.imm != 16) {
+    } else if (sh.imm != 0 && sh.imm != 16) {
       // error here
       return 0;
     }
@@ -308,7 +311,7 @@ u32 assembleAddSubImm(fields_t *instruction) {
   // SUBS       1  1  3  11
 
   i.op = instructionIndex(ADDSUB_IMM, instruction->fields);
-  i.S = i.op & 0b1;
+  i.S = i.op & 1;
   i.op = i.op >> 1;
 
   i.s_op = SOP_ADD_SUB_IMM;
@@ -331,7 +334,7 @@ u32 assembleException(fields_t *instruction) {
   u32 assembled_instruction = 0;
 
   i.LL = instructionIndex(EXCEPTION, instruction->fields) + 1;
-  i.opc = 0b101;
+  i.opc = 5; // 0b101
 
   u16 imm = 0;
   if (instruction->n_fields > 1) {
@@ -373,7 +376,9 @@ u32 assembleException(fields_t *instruction) {
   return assembled_instruction;
 }
 
-u32 assemblePcRelAddressing(fields_t *instruction) {}
+u32 assemblePcRelAddressing(fields_t *instruction) {
+  return 0;
+}
 
 u32 assemble(fields_t *instruction) {
   if (!instruction) { // sanity check

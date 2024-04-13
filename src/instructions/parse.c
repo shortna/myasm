@@ -4,42 +4,35 @@
 #include <string.h>
 
 Register parseRegister(const Str *reg) {
-  if (*reg->s == 'W') {
-    if (strcmp(reg->s, "WZR") == 0) {
-      return (Register){false, 31};
-    }
-    if (strcmp(reg->s, "WSP") == 0) {
-      return (Register){false, 30};
-    }
-  } else {
-    if (strcmp(reg->s, "XZR") == 0) {
-      return (Register){true, 31};
-    }
+  if (*reg->s != 'W' && *reg->s != 'X' && *reg->s != 'S') {
+    return (Register){false, -1};
+  }
 
-    if (strcmp(reg->s, "SP") == 0) {
-      return (Register){true, 30};
-    }
+  Register r = {*reg->s == 'X', -1};
+
+  if (strcmp(reg->s + 1, "ZR") == 0) {
+    r.n = 31;
+    return r;
+  }
+
+  if (strcmp(reg->s, "WSP") == 0 || strcmp(reg->s, "SP") == 0) {
+    r.n = 30;
+    return r;
   }
 
   char *end = NULL;
   long res = strtol(reg->s + 1, &end, 10);
-
   if (end != reg->s + reg->len) {
     return (Register){false, -1};
   }
 
-  if (res >= 0 || res <= 29) {
-    if (*reg->s == 'X') {
-      return (Register){true, res};
-    } else {
-      return (Register){false, res};
-    }
+  if (res >= 0 && res <= 29) {
+    r.n = res;
+    return r;
   }
 
   return (Register){false, -1};
 }
-
-ssize_t parseLabel(const Str *label) { return getLabelPc(label->s); }
 
 u8 parseShift(const Str *shift_type, const Str *amount, Shift *sh) {
   if (shift_type == NULL && amount == NULL) {
@@ -158,16 +151,11 @@ Argument getArgumentType(const Str *s) {
     return IMMEDIATE;
   }
 
-  // label
-  if (parseLabel(s) != -1) {
-    return LABEL;
-  }
-
   // shift
   if (strcmp(s->s, "lsl") == 0 || strcmp(s->s, "lsr") == 0 ||
       strcmp(s->s, "asr") == 0 || strcmp(s->s, "ror") == 0) {
     return SHIFT;
   }
 
-  return NO_ARG;
+  return LABEL;
 }
