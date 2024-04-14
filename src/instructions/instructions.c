@@ -1,6 +1,5 @@
 #include "instructions.h"
-#include "parse.h"
-#include "../assemble.h"
+#include "lexer.h"
 #include <string.h>
 
 // Static opcodes
@@ -25,65 +24,12 @@ static const Instruction INSTRUCTIONS[] = {
     {{"DCPS1", "DCPS2", "DCPS3"}, EXCEPTION, {1, IMMEDIATE | OPTIONAL}},
 };
 
-// s1 must be from INSTRUCTIONS
-// second signature compares against first, order matters
-bool compareSigantures(Signature s1, Signature s2) {
-  u8 i = 0;
-  u8 *s1_arr = ((u8 *)&s1) + 1;
-  u8 *s2_arr = ((u8 *)&s2) + 1;
-  while (i < s1.n_args) {
-    // if args differs from what expected and optional not set
-    if ((s1_arr[i] & s2_arr[i]) == 0 && !(s1_arr[i] & OPTIONAL)) {
-      return false;
-    }
-    i++;
-  }
-
-  return true;
-}
-
-Signature getSignature(const fields_t *instruction) {
-  Signature s = {0};
-
-  if (instruction->n_fields == 1) {
-    return s;
-  }
-
-  uint8_t *s_arr = ((uint8_t *)&s) + 1;
-  const Str *f = instruction->fields + 1;
-
-  for (u8 i = 0; i < instruction->n_fields - 1; i++) {
-    s_arr[i] = getArgumentType(f + i);
-  }
-  s.n_args = instruction->n_fields - 1;
-
-  return s;
-}
-
-InstructionType searchInstruction(const fields_t *fields) {
-  Signature s = getSignature(fields);
-  const char *mnemonic = fields->fields->s;
-
-  for (size_t i = 0; i < sizeof(INSTRUCTIONS) / sizeof(*INSTRUCTIONS); i++) {
-    if (compareSigantures(INSTRUCTIONS[i].s, s)) {
-      u8 j = 0;
-      while (INSTRUCTIONS[i].mnemonic[j]) {
-        if (strcmp(INSTRUCTIONS[i].mnemonic[j], mnemonic) == 0) {
-          return INSTRUCTIONS[i].type;
-        }
-        j++;
-      }
-    }
-  }
-  return NONE;
-}
-
-u8 instructionIndex(InstructionType type, const Str *mnemonic) {
+u8 instructionIndex(InstructionType type, const char *mnemonic) {
   for (u8 i = 0; i < sizeof(INSTRUCTIONS) / sizeof(*INSTRUCTIONS); i++) {
     if (INSTRUCTIONS[i].type == type) {
       u8 j = 0;
       while (INSTRUCTIONS[i].mnemonic[j]) {
-        if (strcmp(INSTRUCTIONS[i].mnemonic[j], mnemonic->s)) {
+        if (strcmp(INSTRUCTIONS[i].mnemonic[j], mnemonic)) {
           return j;
         }
         j++;
@@ -98,20 +44,21 @@ u8 encodeLogicalImmediate(u64 imm, u8 *N, u8 *immr, u8 *imms) {
   assert(0 && "encodeLogicalImmediate Not Implemented");
 }
 
-u32 assembleLogicalImm(fields_t *instruction) {
+u32 assembleLogicalImm(Fields *instruction) {
   LogicalImm i = {0};
   u32 assembled_instruction = 0;
 
-  Register Rd = parseRegister(instruction->fields + 1);
-  Register Rn = parseRegister(instruction->fields + 2);
+  Register Rd;
+  Register Rn;
 
-  if (Rd.n == -1 || Rn.n == -1) {
+  if (!parseRegister(instruction->fields[1].value, &Rd) ||
+      !parseRegister(instruction->fields[2].value, &Rn)) {
     // error here
     return 0;
   }
 
   u64 imm = 0;
-  if (!parseImmediateU64(instruction->fields + 3, &imm)) {
+  if (!parseImmediateU64(instruction->fields[3].value, &imm)) {
     // error here
     return 0;
   }
@@ -130,7 +77,7 @@ u32 assembleLogicalImm(fields_t *instruction) {
     return 0;
   }
 
-  i.opc = instructionIndex(LOGICAL_IMM, instruction->fields);
+  i.opc = instructionIndex(LOGICAL_IMM, instruction->fields[0].value);
   i.s_op = SOP_LOGICAL_IMM;
 
   i.Rn = Rn.n;
@@ -142,15 +89,17 @@ u32 assembleLogicalImm(fields_t *instruction) {
   return assembled_instruction;
 }
 
-u32 assembleLogicalShReg(fields_t *instruction) {
+u32 assembleLogicalShReg(Fields *instruction) {
   LogicalShReg i = {0};
   u32 assembled_instruction = 0;
 
-  Register Rd = parseRegister(instruction->fields + 1);
-  Register Rn = parseRegister(instruction->fields + 2);
-  Register Rm = parseRegister(instruction->fields + 3);
+  Register Rd;
+  Register Rn;
+  Register Rm;
 
-  if (Rd.n == -1 || Rn.n == -1 || Rm.n == -1) {
+  if (!parseRegister(instruction->fields[1].value, &Rd) ||
+      !parseRegister(instruction->fields[2].value, &Rn) ||
+      !parseRegister(instruction->fields[3].value, &Rm)) {
     // error here
     return 0;
   }
@@ -164,16 +113,21 @@ u32 assembleLogicalShReg(fields_t *instruction) {
     return 0;
   }
 
-  Shift sh = {SH_LSL, 0};
+  ShiftType t;
+  u8 imm;
   if (instruction->n_fields > 4) {
-    if (!parseShift(instruction->fields + 4, instruction->fields + 5, &sh)) {
+    if (!parseShift(instruction->fields[4].value, &t)) {
       // error here
       return 0;
     }
-    if (i.sf && sh.imm > 63) {
+    if (!parseImmediateU8(instruction->fields[5].value, &imm)) {
       // error here
       return 0;
-    } else if (!i.sf && sh.imm > 31) {
+    }
+    if (i.sf && imm > 63) {
+      // error here
+      return 0;
+    } else if (!i.sf && imm > 31) {
       // error here
       return 0;
     }
@@ -189,7 +143,7 @@ u32 assembleLogicalShReg(fields_t *instruction) {
   //  11  0  6  110
   //  11  1  7  111
 
-  i.opc = instructionIndex(LOGICAL_SH_REG, instruction->fields);
+  i.opc = instructionIndex(LOGICAL_SH_REG, instruction->fields[0].value);
   i.N = i.opc & 1;
   i.opc = i.opc >> 1;
 
@@ -199,8 +153,8 @@ u32 assembleLogicalShReg(fields_t *instruction) {
   i.Rn = Rn.n;
   i.Rm = Rm.n;
 
-  i.sh = sh.t;
-  i.imm6 = sh.imm;
+  i.sh = t;
+  i.imm6 = imm;
 
   assembled_instruction |= (i.sf << 31) | (i.opc << 29) | (i.s_op << 24) |
                            (i.sh << 22) | (i.N << 21) | (i.Rm << 16) |
@@ -209,47 +163,58 @@ u32 assembleLogicalShReg(fields_t *instruction) {
   return assembled_instruction;
 }
 
-u32 assembleMoveWide(fields_t *instruction) {
+u32 assembleMoveWide(Fields *instruction) {
   MoveWide i = {0};
   u32 assembled_instruction = 0;
 
-  Register Rd = parseRegister(instruction->fields + 1);
+  Register Rd;
+  if (!parseRegister(instruction->fields[1].value, &Rd)) {
+    // error here
+    return 0;
+  }
 
   u16 res = 0;
-  if (!parseImmediateU16(instruction->fields + 2, &res)) {
+  if (!parseImmediateU16(instruction->fields[2].value, &res)) {
     // error here
     return 0;
   }
 
   i.sf = Rd.extended;
 
-  Shift sh = {SH_LSL, 0};
+  ShiftType t;
+  u8 imm;
   if (instruction->n_fields > 3) {
-    if (!parseShift(instruction->fields + 3, instruction->fields + 4, &sh)) {
+    if (!parseShift(instruction->fields[3].value, &t)) {
       // error here
       return 0;
     }
 
-    if (sh.t != SH_LSL) {
+    if (t != SH_LSL) {
       // error here
       return 0;
     }
-    if (i.sf && (sh.imm > 48 || sh.imm % 16 != 0)) {
+
+    if (!parseImmediateU8(instruction->fields[4].value, &imm)) {
       // error here
       return 0;
-    } else if (sh.imm != 0 && sh.imm != 16) {
+    }
+
+    if (i.sf && (imm > 48 || imm % 16 != 0)) {
+      // error here
+      return 0;
+    } else if (imm != 0 && imm != 16) {
       // error here
       return 0;
     }
   }
 
-  i.opc = instructionIndex(MOVEWIDE, instruction->fields);
+  i.opc = instructionIndex(MOVEWIDE, instruction->fields[0].value);
   if (i.opc != 0) { // because opc 0b01 not allocated
     i.opc += 1;
   }
 
   i.s_op = SOP_MOVE_WIDE;
-  i.hw = sh.imm / 16;
+  i.hw = imm / 16;
   i.Rd = Rd.n;
   i.imm16 = res;
 
@@ -259,14 +224,15 @@ u32 assembleMoveWide(fields_t *instruction) {
   return assembled_instruction;
 }
 
-u32 assembleAddSubImm(fields_t *instruction) {
+u32 assembleAddSubImm(Fields *instruction) {
   AddSubImm i = {0};
   u32 assembled_instruction = 0;
 
-  Register Rd = parseRegister(instruction->fields + 1);
-  Register Rn = parseRegister(instruction->fields + 2);
+  Register Rd;
+  Register Rn;
 
-  if (Rd.n == -1 || Rn.n == -1) {
+  if (!parseRegister(instruction->fields[1].value, &Rd) ||
+      !parseRegister(instruction->fields[2].value, &Rn)) {
     // error here
     return 0;
   }
@@ -281,7 +247,7 @@ u32 assembleAddSubImm(fields_t *instruction) {
   }
 
   u16 imm;
-  if (!parseImmediateU16(instruction->fields + 3, &imm)) {
+  if (!parseImmediateU16(instruction->fields[3].value, &imm)) {
     // error here
     return 0;
   }
@@ -291,14 +257,20 @@ u32 assembleAddSubImm(fields_t *instruction) {
     return 0;
   }
 
-  Shift sh = {SH_LSL, 0};
+  ShiftType t;
+  u8 sh_imm;
   if (instruction->n_fields > 4) {
-    if (!parseShift(instruction->fields + 3, instruction->fields + 4, &sh)) {
+    if (!parseShift(instruction->fields[3].value, &t)) {
       // error here
       return 0;
     }
 
-    if (sh.t != SH_LSL || sh.imm != 12) {
+    if (!parseImmediateU8(instruction->fields[4].value, &sh_imm)) {
+      // error here
+      return 0;
+    }
+
+    if (t != SH_LSL || sh_imm != 12) {
       // error here
       return 0;
     }
@@ -310,7 +282,7 @@ u32 assembleAddSubImm(fields_t *instruction) {
   // SUB        1  0  2  10
   // SUBS       1  1  3  11
 
-  i.op = instructionIndex(ADDSUB_IMM, instruction->fields);
+  i.op = instructionIndex(ADDSUB_IMM, instruction->fields[0].value);
   i.S = i.op & 1;
   i.op = i.op >> 1;
 
@@ -319,26 +291,26 @@ u32 assembleAddSubImm(fields_t *instruction) {
   i.Rd = Rd.n;
   i.Rn = Rn.n;
 
-  i.sh = sh.imm == 12;
+  i.sh = sh_imm == 12;
   i.imm12 = imm;
 
   assembled_instruction |= (i.sf << 31) | (i.op << 30) | (i.S << 29) |
-                            (i.s_op << 23) | (i.sh << 22) | (i.imm12 << 10) |
-                            (i.Rn << 5) | i.Rd;
+                           (i.s_op << 23) | (i.sh << 22) | (i.imm12 << 10) |
+                           (i.Rn << 5) | i.Rd;
 
   return assembled_instruction;
 }
 
-u32 assembleException(fields_t *instruction) {
+u32 assembleException(Fields *instruction) {
   Exceptions i = {0};
   u32 assembled_instruction = 0;
 
-  i.LL = instructionIndex(EXCEPTION, instruction->fields) + 1;
+  i.LL = instructionIndex(EXCEPTION, instruction->fields[0].value) + 1;
   i.opc = 5; // 0b101
 
   u16 imm = 0;
   if (instruction->n_fields > 1) {
-    if (!parseImmediateU16(instruction->fields + 1, &imm)) {
+    if (!parseImmediateU16(instruction->fields[1].value, &imm)) {
       // error here
       return 0;
     }
@@ -348,7 +320,7 @@ u32 assembleException(fields_t *instruction) {
     // 101  10  DCPS2
     // 101  11  DCPS3
     // do not process DCPS* instructions since the already set
-    if (*instruction->fields->s != 'D') {
+    if (*instruction->fields[0].value != 'D') {
       // opc  LL  mnemonic
       // 000  01  SVC
       // 000  10  HVC
@@ -359,7 +331,7 @@ u32 assembleException(fields_t *instruction) {
         // opc  LL  0bLL  0bLL - 1  (0bLL - 1) >> 1  mnemonic
         // 001  4   0100  0011      0001             BRK
         // 010  5   0101  0100      0010             HLT
-        // 010  6   0110  0101      0010             TCANCEL 
+        // 010  6   0110  0101      0010             TCANCEL
         i.opc = (i.LL - 1) >> 1;
         i.LL = 0;
       }
@@ -376,15 +348,13 @@ u32 assembleException(fields_t *instruction) {
   return assembled_instruction;
 }
 
-u32 assemblePcRelAddressing(fields_t *instruction) {
-  return 0;
-}
+u32 assemblePcRelAddressing(Fields *instruction) { return 0; }
 
-u32 assemble(fields_t *instruction) {
+u32 assemble(Fields *instruction) {
   if (!instruction) { // sanity check
     return 0;
   }
-  InstructionType type = searchInstruction(instruction);
+  InstructionType type; // = searchInstruction(instruction);
 
   u32 i = 0;
   switch (type) {

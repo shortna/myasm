@@ -42,23 +42,6 @@ void concatCStr(Str *str1, const char *str2) {
   str1->len = str1->len + str2_len;
 }
 
-fields_t initFields(void) {
-  fields_t f = {0};
-  for (u8 i = 0; i < FIELDS_MAX; i++) {
-    f.fields[i] = initStr();
-  }
-  return f;
-}
-
-void freeFields(fields_t *fields) {
-  if (!fields) {
-    return;
-  }
-  for (u8 i = 0; i < FIELDS_MAX; i++) {
-    free(fields->fields[i].s);
-  }
-}
-
 void toUpper(Str *line) {
   for (size_t i = 0; i < line->len; i++) {
     line->s[i] = toupper(line->s[i]);

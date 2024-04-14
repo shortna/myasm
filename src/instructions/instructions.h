@@ -1,7 +1,7 @@
-#ifndef MYASM_INSTRUCTIONS
-#define MYASM_INSTRUCTIONS
+#ifndef MYASM_ARM_INSTRUCTIONS
+#define MYASM_ARM_INSTRUCTIONS
 
-#include "../types.h"
+#include "lexer.h"
 
 #define ARM_INSTRUCTION_SIZE (4)
 
@@ -64,6 +64,17 @@ typedef struct Excpetions {
   u8 LL;     // 2 bit specifies instruction
 } Exceptions;
 
+typedef enum {
+  NO_ARG = 0,
+  IMMEDIATE = 1,
+  REGISTER = 2,
+  SP = 4,
+  LABEL = 8,
+  SHIFT = 16,
+  EXTEND = 32,
+  OPTIONAL = 128,
+} Argument;
+
 typedef struct Signature {
   u8 n_args;
   u8 a1;
@@ -74,6 +85,17 @@ typedef struct Signature {
   u8 a6;
   u8 a7;
 } Signature;
+
+typedef enum {
+  NONE,
+  LOGICAL_IMM,
+  LOGICAL_SH_REG,
+  MOVEWIDE,
+  ADDSUB_IMM,
+  PCRELADDRESSING,
+  EXCEPTION,
+} InstructionType;
+
 
 typedef struct Instruction {
   char const *const mnemonic[10];

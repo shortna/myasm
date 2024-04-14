@@ -1,6 +1,7 @@
 #ifndef MYASM_ASSEMBLE
 #define MYASM_ASSEMBLE
 
+#include "instructions/instructions.h"
 #include "types.h"
 extern u8 INSTRUCTION_SIZE;
 
