@@ -2,7 +2,7 @@
 #define MYASM_LEXER
 
 #include <stdio.h>
-#include "../myasm.h"
+#include "myasm.h"
 
 typedef enum {
   UXTB,
@@ -48,8 +48,8 @@ typedef enum {
 
 typedef struct {
   TokenType type;
-  char *value;
   size_t capacity;
+  char *value;
 } Token;
 
 
@@ -63,7 +63,10 @@ Fields initFields(size_t size_of_field);
 void freeFields(Fields *fields);
 
 Token initToken(size_t size);
+void copyToken(Token *dst, Token *src);
 u8 getToken(FILE *f, Token *t);
+u8 writeToken(FILE *f, Token *t);
+u8 readToken(FILE *f, Token *t);
 
 u8 parseRegister(const char *reg, Register *r);
 u8 parseImmediateU8(const char *imm, u8 *res);

@@ -1,11 +1,10 @@
 #ifndef MYASM_ASSEMBLE
 #define MYASM_ASSEMBLE
 
-#include "instructions/instructions.h"
-#include "types.h"
-extern u8 INSTRUCTION_SIZE;
+#include "myasm.h"
 
-InstructionType searchInstruction(const fields_t *fields);
-u32 assemble(fields_t *instruction);
+u8 searchMnemonic(const char *mnemonic);
+// InstructionType searchInstruction(const fields_t *fields);
+// u32 assemble(fields_t *instruction);
 
 #endif

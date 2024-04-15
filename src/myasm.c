@@ -1,4 +1,5 @@
 #include "myasm.h"
+#include "instructions/lexer.h"
 #include "tables/tables.h"
 #include <errno.h>
 #include <stdio.h>
@@ -55,12 +56,65 @@ void firstPass(const char *filename, FILE *ir_file) {
   }
 
   initTables();
+  size_t pc = 0;
 
-  fseek(ir_file, 0, SEEK_SET);
+  Token t = initToken(UINT8_MAX);
+  Fields f = initFields(UINT8_MAX);
+
+  u8 err = 0;
+  err = getToken(src, &t);
+  do {
+    switch (t.type) {
+    case T_LABEL_DECLARATION:
+      addToSym(t.value, pc, 0, ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE));
+      getToken(NULL, &t);
+      break;
+
+    case T_INSTRUCTION:
+      pc += 4;
+      __attribute__((fallthrough));
+    case T_DIRECTIVE:
+      do {
+        if (f.n_fields < FIELDS_MAX) {
+          copyToken(f.fields + f.n_fields, &t);
+          f.n_fields++;
+        } else {
+          break;
+        }
+        err = getToken(NULL, &t);
+      } while (err && t.type != T_DIRECTIVE && t.type != T_INSTRUCTION &&
+               t.type != T_LABEL_DECLARATION);
+
+      fwrite(&f.n_fields, sizeof(f.n_fields), 1, ir_file);
+      for (u8 i = 0; i < f.n_fields; i++) {
+        writeToken(ir_file, f.fields + i);
+      }
+
+      f.n_fields = 0;
+      break;
+    }
+  } while (err);
   fclose(src);
+
+  free(t.value);
+  freeFields(&f);
+  fseek(ir_file, 0, SEEK_SET);
 }
 
 void secondPass(FILE *ir_file, FILE *dst) {
-  // check if errors
-  // if (ERRORS.len > 0) {fprint("err"), return}
+  u8 n_tokens = 0;
+  Token t = initToken(UINT8_MAX);
+
+  while (1) {
+    fread(&n_tokens, sizeof(n_tokens), 1, ir_file);
+    for (u8 i = 0; i < n_tokens; i++) {
+      if (!readToken(ir_file, &t)) {
+        goto done;
+      }
+      printf("%4d %4lu %20s\n", t.type, t.capacity, t.value);
+    }
+  }
+
+done:
+  free(t.value);
 }

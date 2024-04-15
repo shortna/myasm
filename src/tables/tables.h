@@ -1,7 +1,7 @@
 #ifndef MYASM_TABLES_API
 #define MYASM_TABLES_API
 
-#include "../types.h"
+#include "types.h"
 #include <elf.h>
 #define ELF64_SIZE (64)
 

@@ -96,7 +96,6 @@ typedef enum {
   EXCEPTION,
 } InstructionType;
 
-
 typedef struct Instruction {
   char const *const mnemonic[10];
   const InstructionType type;

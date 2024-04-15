@@ -1,4 +1,5 @@
 #include "instructions.h"
+#include "assemble.h"
 #include "lexer.h"
 #include <string.h>
 
@@ -9,8 +10,6 @@
 #define SOP_ADD_SUB_IMM (34)    // (0b00100010)
 #define SOP_PC_REl (16)         // (0b00010000)
 #define SOP_EXCEPTIONS (212)    // (0b11010100)
-
-u8 INSTRUCTION_SIZE = ARM_INSTRUCTION_SIZE;
 
 // IMPORTANT
 // instruction mnemonic MUST be in order of incresing opc field
@@ -23,6 +22,19 @@ static const Instruction INSTRUCTIONS[] = {
     {{"SVC", "HVC", "SMC", "BRK", "HLT", "TCANCEL"}, EXCEPTION, {1, IMMEDIATE}},
     {{"DCPS1", "DCPS2", "DCPS3"}, EXCEPTION, {1, IMMEDIATE | OPTIONAL}},
 };
+
+u8 searchMnemonic(const char *mnemonic) {
+  for (size_t i = 0; i < sizeof(INSTRUCTIONS) / sizeof(*INSTRUCTIONS); i++) {
+    u8 j = 0;
+    while (INSTRUCTIONS[i].mnemonic[j]) {
+      if (strcmp(mnemonic, INSTRUCTIONS[i].mnemonic[j]) == 0) {
+        return 1;
+      }
+      j++;
+    }
+  }
+  return 0;
+}
 
 u8 instructionIndex(InstructionType type, const char *mnemonic) {
   for (u8 i = 0; i < sizeof(INSTRUCTIONS) / sizeof(*INSTRUCTIONS); i++) {
@@ -113,8 +125,8 @@ u32 assembleLogicalShReg(Fields *instruction) {
     return 0;
   }
 
-  ShiftType t;
-  u8 imm;
+  ShiftType t = SH_LSL;
+  u8 imm = 0;
   if (instruction->n_fields > 4) {
     if (!parseShift(instruction->fields[4].value, &t)) {
       // error here
@@ -181,8 +193,8 @@ u32 assembleMoveWide(Fields *instruction) {
 
   i.sf = Rd.extended;
 
-  ShiftType t;
-  u8 imm;
+  ShiftType t = SH_LSL;
+  u8 imm = 0;
   if (instruction->n_fields > 3) {
     if (!parseShift(instruction->fields[3].value, &t)) {
       // error here
@@ -257,8 +269,8 @@ u32 assembleAddSubImm(Fields *instruction) {
     return 0;
   }
 
-  ShiftType t;
-  u8 sh_imm;
+  ShiftType t = SH_LSL;
+  u8 sh_imm = 0;
   if (instruction->n_fields > 4) {
     if (!parseShift(instruction->fields[3].value, &t)) {
       // error here
