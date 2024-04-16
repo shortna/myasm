@@ -1,4 +1,6 @@
 #include "myasm.h"
+#include "assemble.h"
+#include "directives/directives.h"
 #include "instructions/lexer.h"
 #include "tables/tables.h"
 #include <errno.h>
@@ -102,19 +104,25 @@ void firstPass(const char *filename, FILE *ir_file) {
 }
 
 void secondPass(FILE *ir_file, FILE *dst) {
-  u8 n_tokens = 0;
-  Token t = initToken(UINT8_MAX);
+  Fields f = initFields(UINT8_MAX);
+  fseek(dst, ELF64_SIZE, SEEK_SET);
 
-  while (1) {
-    fread(&n_tokens, sizeof(n_tokens), 1, ir_file);
-    for (u8 i = 0; i < n_tokens; i++) {
-      if (!readToken(ir_file, &t)) {
-        goto done;
-      }
-      printf("%4d %4lu %20s\n", t.type, t.capacity, t.value);
+  u8 err = 0;
+  do {
+    fread(&f.n_fields, sizeof(f.n_fields), 1, ir_file);
+    for (u8 i = 0; i < f.n_fields; i++) {
+      err = readToken(ir_file, f.fields + i);
     }
-  }
 
-done:
-  free(t.value);
+    if (f.fields->type == T_INSTRUCTION) {
+      u32 instruction = assemble(&f);
+      if (instruction) {
+        fwrite(&instruction, sizeof(instruction), 1, dst);
+      } else {
+        // error here
+      }
+    }
+  } while (err);
+
+  freeFields(&f);
 }

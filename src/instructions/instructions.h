@@ -72,18 +72,19 @@ typedef enum {
   LABEL = 8,
   SHIFT = 16,
   EXTEND = 32,
-  OPTIONAL = 128,
+  BRACKETS = 64,
+  OPTIONAL = 1024,
 } Argument;
 
 typedef struct Signature {
   u8 n_args;
-  u8 a1;
-  u8 a2;
-  u8 a3;
-  u8 a4;
-  u8 a5;
-  u8 a6;
-  u8 a7;
+  Argument a1;
+  Argument a2;
+  Argument a3;
+  Argument a4;
+  Argument a5;
+  Argument a6;
+  Argument a7;
 } Signature;
 
 typedef enum {

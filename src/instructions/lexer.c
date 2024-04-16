@@ -165,7 +165,7 @@ u8 parseRegister(const char *reg, Register *r) {
     n = 30;
   }
 
-  i64 res = -1;
+  i64 res;
   if (n == 0) {
     if (!parseDigit(reg + 1, &res)) {
       return 0;

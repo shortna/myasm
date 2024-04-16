@@ -1,6 +1,7 @@
 #include "instructions.h"
 #include "assemble.h"
 #include "lexer.h"
+#include "tables/tables.h"
 #include <string.h>
 
 // Static opcodes
@@ -55,6 +56,8 @@ u8 instructionIndex(InstructionType type, const char *mnemonic) {
 u8 encodeLogicalImmediate(u64 imm, u8 *N, u8 *immr, u8 *imms) {
   assert(0 && "encodeLogicalImmediate Not Implemented");
 }
+
+u32 assemblePcRelAddressing(Fields *instruction) { return 0; }
 
 u32 assembleLogicalImm(Fields *instruction) {
   LogicalImm i = {0};
@@ -360,19 +363,113 @@ u32 assembleException(Fields *instruction) {
   return assembled_instruction;
 }
 
-u32 assemblePcRelAddressing(Fields *instruction) { return 0; }
+u8 compareSignatures(const Signature *s1, const Signature *s2) {
+}
+
+InstructionType getInstructionType(const char *mnemonic, Signature *s) {
+  for (size_t i = 0; i < sizeof(INSTRUCTIONS) / sizeof(*INSTRUCTIONS); i++) {
+    if (compareSignatures(&INSTRUCTIONS[i].s, s)) {
+      u8 j = 0;
+      while (INSTRUCTIONS[i].mnemonic[j]) {
+        if (strcmp(INSTRUCTIONS[i].mnemonic[j], mnemonic) == 0) {
+          return INSTRUCTIONS[i].type;
+        }
+      }
+    }
+  }
+  return NONE;
+}
+
+Signature decodeTokens(const Fields *instruction) {
+  Signature s = {0};
+  int *s_arr = ((int *)&s);
+
+  for (u8 i = 1; i < instruction->n_fields; i++) {
+    switch (instruction->fields[i].type) {
+    case T_REGISTER: {
+      Register r;
+      parseRegister(instruction->fields[i].value, &r);
+      if (r.n == 31) {
+        s_arr[i] = SP;
+      } else {
+        s_arr[i] = REGISTER;
+      }
+      break;
+    }
+    case T_LABEL:
+      if (searchInSym(instruction->fields[i].value) == -1) {
+        // error here
+        break;
+      }
+      s_arr[i] = LABEL;
+      break;
+    case T_IMMEDIATE:
+      s_arr[i] = IMMEDIATE;
+      break;
+    case T_SHIFT:
+      if (i + 1 < instruction->n_fields &&
+          instruction->fields[i + 1].type == T_IMMEDIATE) {
+        s_arr[i] = T_SHIFT;
+      }
+      // error here (shift without parameter)
+      break;
+    case T_EXTEND:
+      s_arr[i] = EXTEND;
+      break;
+
+#warning "replace strcat in future or check length before concatinating"
+    case T_RSBRACE:
+    case T_LSBRACE:
+      s_arr[i] = BRACKETS;
+      u8 j = i;
+      do {
+        j++;
+        strcat(instruction->fields[i].value, instruction->fields[j].value);
+      } while (j < instruction->n_fields &&
+               instruction->fields[j].type != T_LSBRACE);
+
+      if (instruction->fields[j].type != T_LSBRACE) {
+        s_arr[i] = NONE;
+        // error here
+        break;
+      }
+
+      if (j + 1 < instruction->n_fields &&
+          instruction->fields[j + 1].type == T_BANG) {
+        strcat(instruction->fields[i].value, instruction->fields[j + 1].value);
+      }
+      break;
+
+    case T_PLUS:
+    case T_MINUS:
+      if (i + 1 < instruction->n_fields &&
+          instruction->fields[i + 1].type == T_IMMEDIATE) {
+        s_arr[i] = IMMEDIATE;
+        strcat(instruction->fields[i].value, instruction->fields[i + 1].value);
+        break;
+      }
+      // error here (sign without parameter)
+      break;
+
+    case T_DOLLAR:
+#warning "figure out dollar"
+      break;
+    }
+  }
+
+  s.n_args = instruction->n_fields - 1;
+  return s;
+}
 
 u32 assemble(Fields *instruction) {
-  if (!instruction) { // sanity check
+  if (!instruction || instruction->n_fields == 0) { // sanity check
     return 0;
   }
-  InstructionType type; // = searchInstruction(instruction);
+  Signature s = decodeTokens(instruction);
+  InstructionType it = getInstructionType(instruction->fields->value, &s);
 
   u32 i = 0;
-  switch (type) {
-  case NONE:
-    // warning unknown instruction
-    return 0;
+  switch (it) {
   case LOGICAL_IMM:
     i = assembleLogicalImm(instruction);
     break;
@@ -391,7 +488,14 @@ u32 assemble(Fields *instruction) {
   case EXCEPTION:
     i = assembleException(instruction);
     break;
+  case NONE:
+    // error here 
+    return 0;
   }
 
-  return i;
+  if (i) {
+    return i;
+  }
+
+  return 0;
 }

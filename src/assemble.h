@@ -3,8 +3,9 @@
 
 #include "myasm.h"
 
+// forward declaration
+struct Fields;
 u8 searchMnemonic(const char *mnemonic);
-// InstructionType searchInstruction(const fields_t *fields);
-// u32 assemble(fields_t *instruction);
+u32 assemble(struct Fields *instruction);
 
 #endif

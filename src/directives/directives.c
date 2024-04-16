@@ -1,5 +1,6 @@
 #include "directives.h"
 #include "instructions/lexer.h"
+#include "tables/tables.h"
 #include <string.h>
 
 u8 dGlobal(Fields *f) {}
@@ -24,3 +25,5 @@ u8 searchDirective(const char *name) {
   return 0;
 }
 
+u8 execDirective(Fields *f) {
+}
