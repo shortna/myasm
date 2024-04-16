@@ -1,5 +1,6 @@
 build
 example.S
+test.S
 .cache
 compile_commands.json
 TODO

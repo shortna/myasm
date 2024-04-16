@@ -103,9 +103,16 @@ void firstPass(const char *filename, FILE *ir_file) {
   fseek(ir_file, 0, SEEK_SET);
 }
 
+void printBinary(u32 n) {
+  for (u32 i = 0; i < sizeof(n) * 8; i++) {
+    printf("%d", (n >> ((sizeof(n) * 8) - i - 1)) & 1);
+  }
+  printf("\n");
+}
+
 void secondPass(FILE *ir_file, FILE *dst) {
   Fields f = initFields(UINT8_MAX);
-  fseek(dst, ELF64_SIZE, SEEK_SET);
+  //  fseek(dst, ELF64_SIZE, SEEK_SET);
 
   u8 err = 0;
   do {
@@ -113,11 +120,16 @@ void secondPass(FILE *ir_file, FILE *dst) {
     for (u8 i = 0; i < f.n_fields; i++) {
       err = readToken(ir_file, f.fields + i);
     }
+    if (!err) {
+      break;
+    }
 
     if (f.fields->type == T_INSTRUCTION) {
       u32 instruction = assemble(&f);
       if (instruction) {
-        fwrite(&instruction, sizeof(instruction), 1, dst);
+        printf("%4s: ", f.fields->value);
+        printBinary(instruction);
+        // fwrite(&instruction, sizeof(instruction), 1, dst);
       } else {
         // error here
       }

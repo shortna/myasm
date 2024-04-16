@@ -42,7 +42,7 @@ u8 instructionIndex(InstructionType type, const char *mnemonic) {
     if (INSTRUCTIONS[i].type == type) {
       u8 j = 0;
       while (INSTRUCTIONS[i].mnemonic[j]) {
-        if (strcmp(INSTRUCTIONS[i].mnemonic[j], mnemonic)) {
+        if (strcmp(INSTRUCTIONS[i].mnemonic[j], mnemonic) == 0) {
           return j;
         }
         j++;
@@ -223,7 +223,7 @@ u32 assembleMoveWide(Fields *instruction) {
     }
   }
 
-  i.opc = instructionIndex(MOVEWIDE, instruction->fields[0].value);
+  i.opc = instructionIndex(MOVEWIDE, instruction->fields->value);
   if (i.opc != 0) { // because opc 0b01 not allocated
     i.opc += 1;
   }
@@ -233,8 +233,9 @@ u32 assembleMoveWide(Fields *instruction) {
   i.Rd = Rd.n;
   i.imm16 = res;
 
-  assembled_instruction |= (i.sf << 31) | (i.opc << 29) | (i.s_op << 23) |
-                           (i.hw << 21) | (i.imm16 << 5) | i.Rd;
+  assembled_instruction |= ((u32)i.sf << 31u) | ((u32)i.opc << 29u) |
+                           ((u32)i.s_op << 23u) | ((u32)i.hw << 21u) |
+                           ((u32)i.imm16 << 5u) | i.Rd;
 
   return assembled_instruction;
 }
@@ -309,9 +310,9 @@ u32 assembleAddSubImm(Fields *instruction) {
   i.sh = sh_imm == 12;
   i.imm12 = imm;
 
-  assembled_instruction |= (i.sf << 31) | (i.op << 30) | (i.S << 29) |
-                           (i.s_op << 23) | (i.sh << 22) | (i.imm12 << 10) |
-                           (i.Rn << 5) | i.Rd;
+  assembled_instruction |= (i.sf << 31u) | (i.op << 30u) | (i.S << 29u) |
+                           (i.s_op << 23u) | (i.sh << 22u) | (i.imm12 << 10u) |
+                           (i.Rn << 5u) | i.Rd;
 
   return assembled_instruction;
 }
@@ -357,13 +358,25 @@ u32 assembleException(Fields *instruction) {
   i.imm16 = imm;
   i.op2 = 0;
 
-  assembled_instruction |=
-      (i.sop << 24) | (i.opc << 21) | (i.imm16 << 5) | (i.op2 << 2) | i.LL;
+  assembled_instruction |= ((u32)i.sop << 24u) | ((u32)i.opc << 21u) |
+                           ((u32)i.imm16 << 5u) | (i.op2 << 2u) | i.LL;
 
   return assembled_instruction;
 }
 
 u8 compareSignatures(const Signature *s1, const Signature *s2) {
+  u8 i = 0;
+  int *s1_arr = ((int *)s1) + 1;
+  int *s2_arr = ((int *)s2) + 1;
+  while (i < s1->n_args) {
+    // if args differs from what expected and optional not set
+    if ((s1_arr[i] & s2_arr[i]) == 0 && !(s1_arr[i] & OPTIONAL)) {
+      return 0;
+    }
+    i++;
+  }
+
+  return 1;
 }
 
 InstructionType getInstructionType(const char *mnemonic, Signature *s) {
@@ -374,6 +387,7 @@ InstructionType getInstructionType(const char *mnemonic, Signature *s) {
         if (strcmp(INSTRUCTIONS[i].mnemonic[j], mnemonic) == 0) {
           return INSTRUCTIONS[i].type;
         }
+        j++;
       }
     }
   }

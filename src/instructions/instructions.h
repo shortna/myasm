@@ -77,7 +77,7 @@ typedef enum {
 } Argument;
 
 typedef struct Signature {
-  u8 n_args;
+  int n_args;
   Argument a1;
   Argument a2;
   Argument a3;
