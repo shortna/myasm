@@ -17,7 +17,10 @@
 static const Instruction INSTRUCTIONS[] = {
     {{"ADR", "ADRP"}, PCRELADDRESSING, {2, REGISTER, LABEL}},
     {{"MOVN", "MOVZ", "MOVK"}, MOVEWIDE, {3, REGISTER, IMMEDIATE, SHIFT | OPTIONAL}},
-    {{"ADD", "ADDS", "SUB", "SUBS"}, ADDSUB_IMM, {4, REGISTER | SP, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
+
+    {{"ADD", "SUB"}, ADDSUB_IMM, {4, REGISTER | SP, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
+    {{"ADDS", "SUBS"}, ADDSUB_IMM, {4, REGISTER, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
+
     {{"AND", "ORR", "EOR", "ANDS"}, LOGICAL_IMM, {3, REGISTER | SP, REGISTER, IMMEDIATE}},
     {{"AND", "BIC", "ORR", "ORN", "EOR", "EON", "ANDS", "BICS"}, LOGICAL_SH_REG, {4, REGISTER, REGISTER, REGISTER, SHIFT | OPTIONAL}},
     {{"SVC", "HVC", "SMC", "BRK", "HLT", "TCANCEL"}, EXCEPTION, {1, IMMEDIATE}},
@@ -53,11 +56,103 @@ u8 instructionIndex(InstructionType type, const char *mnemonic) {
   return 0;
 }
 
-u8 encodeLogicalImmediate(u64 imm, u8 *N, u8 *immr, u8 *imms) {
-  assert(0 && "encodeLogicalImmediate Not Implemented");
+u32 assemblePcRelAddressing(Fields *instruction) { return 0; }
+
+u8 countTrailingOnes(u64 digit) {
+  u8 count = 0;
+  u64 mask = 1;
+  while ((digit & mask) == 1) {
+    mask = mask << 1;
+    count++;
+  }
+  return count;
 }
 
-u32 assemblePcRelAddressing(Fields *instruction) { return 0; }
+u8 countTrailingZeros(u64 digit) {
+  u8 count = 0;
+  u64 mask = 1;
+  while ((digit & mask) == 0) {
+    mask = mask << 1;
+    count++;
+  }
+  return count;
+}
+
+u8 encodeLogicalImmediate(u64 imm, u8 *N, u8 *immr, u8 *imms, u8 extended) {
+  // all 0 or all 1 cant be encoded
+  if (imm == 0ULL || ~imm == 0ULL) {
+    return 0;
+  }
+
+  // how to determine the element size:
+  // by comparing lower and higher half untill they match e.g.
+  //
+  // extended = true
+  // size = 64 / 2 = 32
+  // imm = 0000000100000001000000010000000100000001000000010000000100000001
+  //
+  // lower =  00000001000000010000000100000001
+  // higher = 00000001000000010000000100000001
+  // lower == higher; continue
+  //
+  // size = 16
+  // lower =  0000000100000001
+  // higher = 0000000100000001
+  // lower == higher; continue
+  //
+  // size = 8
+  // lower =  00000001
+  // higher = 00000001
+  // lower == higher; continue
+  //
+  // size = 4
+  // lower =  0001
+  // higher = 0000
+  // lower != higher;
+  //
+  // last time lower == higher was when size = 8
+  //
+  // result:
+  //  size = 8
+
+  u8 size = extended ? 64u : 32u;
+  do {
+    size /= 2;
+    // mask used to extract lower (size / 2) bits e.g.
+    // if size == 64 = extract lower 32 bits
+    // if size == 32 = extract lower 16 bits
+    u64 mask = (1ULL << size) - 1;
+
+    // (imm & mask) - lower half
+    // (imm >> size) & mask - higher half
+    // if lower half not equal higher half
+    if ((imm & mask) != ((imm >> size) & mask)) {
+      size *= 2;
+      break;
+    }
+  } while (size > 2);
+
+  // extract pattern e.g
+  // 00000001 (from example above)
+  u64 mask = ((u64)-1LL) >> (64 - size);
+  imm = imm & mask;
+
+  // determine rotation
+  *immr = countTrailingZeros(imm) == 0 ? 0 : size - countTrailingZeros(imm);
+
+  // imms
+  *imms = countTrailingOnes(imm >> *immr) == 0
+              ? 0
+              : countTrailingOnes(imm >> *immr) - 1;
+  if (size == 64) {
+    *N = 1;
+  } else {
+    *N = 0;
+    *imms = *imms & (~size);
+  }
+
+  return 1;
+}
 
 u32 assembleLogicalImm(Fields *instruction) {
   LogicalImm i = {0};
@@ -87,7 +182,7 @@ u32 assembleLogicalImm(Fields *instruction) {
     return 0;
   }
 
-  if (!encodeLogicalImmediate(imm, &i.N, &i.immr, &i.imms)) {
+  if (!encodeLogicalImmediate(imm, &i.N, &i.immr, &i.imms, i.sf)) {
     // error here
     return 0;
   }
@@ -98,13 +193,19 @@ u32 assembleLogicalImm(Fields *instruction) {
   i.Rn = Rn.n;
   i.Rd = Rd.n;
 
-  assembled_instruction |= (i.sf << 31) | (i.opc << 29) | (i.s_op << 23) |
-                           (i.N << 22) | (i.immr << 16) | (i.imms << 10) |
-                           (i.Rn << 5) | i.Rd;
+  assembled_instruction |= ((u32)i.sf << 31) | ((u32)i.opc << 29) |
+                           ((u32)i.s_op << 23) | ((u32)i.N << 22) |
+                           ((u32)i.immr << 16) | ((u32)i.imms << 10) |
+                           ((u32)i.Rn << 5) | i.Rd;
   return assembled_instruction;
 }
 
 u32 assembleLogicalShReg(Fields *instruction) {
+  if (instruction->n_fields != 4 && instruction->n_fields != 6) {
+    // error here
+    return 0;
+  }
+
   LogicalShReg i = {0};
   u32 assembled_instruction = 0;
 
@@ -130,7 +231,7 @@ u32 assembleLogicalShReg(Fields *instruction) {
 
   ShiftType t = SH_LSL;
   u8 imm = 0;
-  if (instruction->n_fields > 4) {
+  if (instruction->n_fields == 6) {
     if (!parseShift(instruction->fields[4].value, &t)) {
       // error here
       return 0;
@@ -171,9 +272,10 @@ u32 assembleLogicalShReg(Fields *instruction) {
   i.sh = t;
   i.imm6 = imm;
 
-  assembled_instruction |= (i.sf << 31) | (i.opc << 29) | (i.s_op << 24) |
-                           (i.sh << 22) | (i.N << 21) | (i.Rm << 16) |
-                           (i.imm6 << 10) | (i.Rn << 5) | i.Rd;
+  assembled_instruction |= ((u32)i.sf << 31) | ((u32)i.opc << 29) |
+                           ((u32)i.s_op << 24) | ((u32)i.sh << 22) |
+                           ((u32)i.N << 21) | ((u32)i.Rm << 16) |
+                           ((u32)i.imm6 << 10) | ((u32)i.Rn << 5) | i.Rd;
 
   return assembled_instruction;
 }
@@ -217,7 +319,7 @@ u32 assembleMoveWide(Fields *instruction) {
     if (i.sf && (imm > 48 || imm % 16 != 0)) {
       // error here
       return 0;
-    } else if (imm != 0 && imm != 16) {
+    } else if (!i.sf && imm != 0 && imm != 16) {
       // error here
       return 0;
     }
@@ -241,6 +343,11 @@ u32 assembleMoveWide(Fields *instruction) {
 }
 
 u32 assembleAddSubImm(Fields *instruction) {
+  if (instruction->n_fields != 4 && instruction->n_fields != 6) {
+    // error here
+    return 0;
+  }
+
   AddSubImm i = {0};
   u32 assembled_instruction = 0;
 
@@ -275,13 +382,13 @@ u32 assembleAddSubImm(Fields *instruction) {
 
   ShiftType t = SH_LSL;
   u8 sh_imm = 0;
-  if (instruction->n_fields > 4) {
-    if (!parseShift(instruction->fields[3].value, &t)) {
+  if (instruction->n_fields == 6) {
+    if (!parseShift(instruction->fields[4].value, &t)) {
       // error here
       return 0;
     }
 
-    if (!parseImmediateU8(instruction->fields[4].value, &sh_imm)) {
+    if (!parseImmediateU8(instruction->fields[5].value, &sh_imm)) {
       // error here
       return 0;
     }
@@ -292,15 +399,8 @@ u32 assembleAddSubImm(Fields *instruction) {
     }
   }
 
-  // mnemonic   op S  j  jb
-  // ADD        0  0  0  00
-  // ADDS       0  1  1  01
-  // SUB        1  0  2  10
-  // SUBS       1  1  3  11
-
   i.op = instructionIndex(ADDSUB_IMM, instruction->fields[0].value);
-  i.S = i.op & 1;
-  i.op = i.op >> 1;
+  i.S = *(instruction->fields->value + 3) != '\0';
 
   i.s_op = SOP_ADD_SUB_IMM;
 
@@ -310,9 +410,10 @@ u32 assembleAddSubImm(Fields *instruction) {
   i.sh = sh_imm == 12;
   i.imm12 = imm;
 
-  assembled_instruction |= (i.sf << 31u) | (i.op << 30u) | (i.S << 29u) |
-                           (i.s_op << 23u) | (i.sh << 22u) | (i.imm12 << 10u) |
-                           (i.Rn << 5u) | i.Rd;
+  assembled_instruction |= ((u32)i.sf << 31u) | ((u32)i.op << 30u) |
+                           ((u32)i.S << 29u) | ((u32)i.s_op << 23u) |
+                           ((u32)i.sh << 22u) | ((u32)i.imm12 << 10u) |
+                           ((u32)i.Rn << 5u) | i.Rd;
 
   return assembled_instruction;
 }
@@ -403,7 +504,7 @@ Signature decodeTokens(const Fields *instruction) {
     case T_REGISTER: {
       Register r;
       parseRegister(instruction->fields[i].value, &r);
-      if (r.n == 31) {
+      if (r.n == 32) {
         s_arr[i] = SP;
       } else {
         s_arr[i] = REGISTER;
@@ -503,7 +604,7 @@ u32 assemble(Fields *instruction) {
     i = assembleException(instruction);
     break;
   case NONE:
-    // error here 
+    // error here
     return 0;
   }
 

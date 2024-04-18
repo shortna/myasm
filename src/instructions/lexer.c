@@ -131,20 +131,14 @@ u8 parseDigit(const char *number, i64 *res) {
 
   u8 base = 10;
   const char *d = number;
-  if (*(d + 1) == 'x') {
-    base = 16;
-  }
-
-  while (*d) {
-    if (!isdigit(*d) && (number + 1 != d && *d != 'x')) {
-      return 0;
-    }
-    d++;
+  if (*(d + 1) == 'X') {
+    base = 0;
   }
 
   errno = 0;
-  *res = strtoll(number, NULL, base);
-  if (errno != 0) {
+  char *end = NULL;
+  *res = strtoll(number, &end, base);
+  if (errno != 0 || *end != '\0') {
     return 0;
   }
 
@@ -162,7 +156,7 @@ u8 parseRegister(const char *reg, Register *r) {
   }
 
   if (strcmp(reg, "WSP") == 0 || strcmp(reg, "SP") == 0) {
-    n = 30;
+    n = 32;
   }
 
   i64 res;
@@ -177,8 +171,8 @@ u8 parseRegister(const char *reg, Register *r) {
   }
 
   if (r) {
-    r->extended = *reg == 'X';
-    r->n = res;
+    r->extended = *reg == 'X' || *reg == 'S';
+    r->n = n;
   }
   return 1;
 }
