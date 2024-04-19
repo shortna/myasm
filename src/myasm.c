@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
   // ir_file
   // TYPE|VALUE|PC
   FILE *ir_file = tmpfile();
-//  FILE *ir_file = fopen("a.out", "w");
+  //  FILE *ir_file = fopen("a.out", "w");
   if (!ir_file) {
     fprintf(stderr, "Failed to open ir file. Error: %s\n", strerror(errno));
     exit(EXIT_FAILURE);
@@ -127,7 +127,7 @@ void secondPass(FILE *ir_file, FILE *dst) {
 
     if (f.fields->type == T_INSTRUCTION) {
       u32 instruction = assemble(&f);
-      if (instruction) {
+      if (instruction != 0) {
         printf("%s: ", f.fields->value);
         printBinary(instruction);
       }

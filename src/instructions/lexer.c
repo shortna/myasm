@@ -124,20 +124,20 @@ done:
   return 1;
 }
 
-u8 parseDigit(const char *number, i64 *res) {
+u8 parseDigit(const char *number, u64 *res) {
   if (!number) {
     return 0;
   }
 
   u8 base = 10;
   const char *d = number;
-  if (*(d + 1) == 'X') {
+  if (*d == '0' && *(d + 1) == 'X') {
     base = 0;
   }
 
   errno = 0;
   char *end = NULL;
-  *res = strtoll(number, &end, base);
+  *res = strtoull(number, &end, base);
   if (errno != 0 || *end != '\0') {
     return 0;
   }
@@ -156,10 +156,10 @@ u8 parseRegister(const char *reg, Register *r) {
   }
 
   if (strcmp(reg, "WSP") == 0 || strcmp(reg, "SP") == 0) {
-    n = 32;
+    n = REGISTER_SP;
   }
 
-  i64 res;
+  u64 res;
   if (n == 0) {
     if (!parseDigit(reg + 1, &res)) {
       return 0;
@@ -178,7 +178,7 @@ u8 parseRegister(const char *reg, Register *r) {
 }
 
 u8 parseImmediateU8(const char *imm, u8 *res) {
-  i64 n;
+  u64 n;
 
   if (*imm == '#') {
     imm++;
@@ -199,7 +199,7 @@ u8 parseImmediateU8(const char *imm, u8 *res) {
 }
 
 u8 parseImmediateU16(const char *imm, u16 *res) {
-  i64 n;
+  u64 n;
 
   if (*imm == '#') {
     imm++;
@@ -220,7 +220,7 @@ u8 parseImmediateU16(const char *imm, u16 *res) {
 }
 
 u8 parseImmediateU32(const char *imm, u32 *res) {
-  i64 n;
+  u64 n;
 
   if (*imm == '#') {
     imm++;
@@ -241,7 +241,7 @@ u8 parseImmediateU32(const char *imm, u32 *res) {
 }
 
 u8 parseImmediateU64(const char *imm, u64 *res) {
-  i64 n;
+  u64 n;
 
   if (*imm == '#') {
     imm++;
@@ -258,21 +258,21 @@ u8 parseImmediateU64(const char *imm, u64 *res) {
 }
 
 u8 parseShift(const char *shift, ShiftType *sh) {
-  ShiftType sht;
+  ShiftType sh_t;
   if (strcmp(shift, "LSL") == 0) {
-    sht = SH_LSL;
+    sh_t = SH_LSL;
   } else if (strcmp(shift, "LSR") == 0) {
-    sht = SH_LSR;
+    sh_t = SH_LSR;
   } else if (strcmp(shift, "ASR") == 0) {
-    sht = SH_ASR;
+    sh_t = SH_ASR;
   } else if (strcmp(shift, "ROR") == 0) {
-    sht = SH_ROR;
+    sh_t = SH_ROR;
   } else {
     return 0;
   }
 
   if (sh) {
-    *sh = sht;
+    *sh = sh_t;
   }
   return 1;
 }
@@ -372,4 +372,3 @@ u8 readToken(FILE *f, Token *t) {
   fread(t->value, n, 1, f);
   return 1;
 }
-

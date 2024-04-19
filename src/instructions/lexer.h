@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include "myasm.h"
+#define REGISTER_SP (32)
 
 typedef enum {
   UXTB,

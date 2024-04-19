@@ -6,7 +6,7 @@ TARGET_DIR := build
 TARGET := myasm
 
 CFLAGS := -std=gnu11 -g -Wpedantic -Wall -Wextra -I $(SRC_DIR) \
-					-fsanitize=address,pointer-compare,pointer-subtract,leak,undefined,null,bounds,alignment 
+					-fsanitize=address,pointer-compare,pointer-subtract,leak,undefined,null,bounds,alignment
 CC := clang
 
 # MCL

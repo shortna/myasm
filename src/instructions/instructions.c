@@ -27,6 +27,44 @@ static const Instruction INSTRUCTIONS[] = {
     {{"DCPS1", "DCPS2", "DCPS3"}, EXCEPTION, {1, IMMEDIATE | OPTIONAL}},
 };
 
+static u8 countTrailingOnes(u64 n) {
+  u8 count = 0;
+  u64 mask = 1;
+  while ((n & mask) == 1) {
+    mask <<= 1;
+    count++;
+  }
+  return count;
+}
+
+static u8 countTrailingZeros(u64 n) {
+  u8 count = 0;
+  u64 mask = 1;
+  while ((n & mask) == 0) {
+    mask <<= 1;
+    count++;
+  }
+  return count;
+}
+
+inline static u8 countLeadingOnes(u64 n) {
+  u8 count = 0;
+  u64 mask = 1ULL << 63;
+  while ((n & mask) == 1) {
+    mask >>= 1;
+    count++;
+  }
+  return count;
+}
+
+inline static u8 isMask(u64 imm) {
+  return imm && ((imm + 1) & imm) == 0;
+}
+
+inline static u8 isShiftedMask(u64 imm) {
+  return imm && isMask((imm - 1) | imm);
+}
+
 u8 searchMnemonic(const char *mnemonic) {
   for (size_t i = 0; i < sizeof(INSTRUCTIONS) / sizeof(*INSTRUCTIONS); i++) {
     u8 j = 0;
@@ -58,27 +96,7 @@ u8 instructionIndex(InstructionType type, const char *mnemonic) {
 
 u32 assemblePcRelAddressing(Fields *instruction) { return 0; }
 
-u8 countTrailingOnes(u64 digit) {
-  u8 count = 0;
-  u64 mask = 1;
-  while ((digit & mask) == 1) {
-    mask = mask << 1;
-    count++;
-  }
-  return count;
-}
-
-u8 countTrailingZeros(u64 digit) {
-  u8 count = 0;
-  u64 mask = 1;
-  while ((digit & mask) == 0) {
-    mask = mask << 1;
-    count++;
-  }
-  return count;
-}
-
-u8 encodeLogicalImmediate(u64 imm, u8 *N, u8 *immr, u8 *imms, u8 extended) {
+u8 encodeBitmaskImmediate(u64 imm, u8 *N, u8 *immr, u8 *imms, u8 extended) {
   // all 0 or all 1 cant be encoded
   if (imm == 0ULL || ~imm == 0ULL) {
     return 0;
@@ -117,7 +135,7 @@ u8 encodeLogicalImmediate(u64 imm, u8 *N, u8 *immr, u8 *imms, u8 extended) {
 
   u8 size = extended ? 64u : 32u;
   do {
-    size /= 2;
+    size >>= 1;
     // mask used to extract lower (size / 2) bits e.g.
     // if size == 64 = extract lower 32 bits
     // if size == 32 = extract lower 16 bits
@@ -127,29 +145,49 @@ u8 encodeLogicalImmediate(u64 imm, u8 *N, u8 *immr, u8 *imms, u8 extended) {
     // (imm >> size) & mask - higher half
     // if lower half not equal higher half
     if ((imm & mask) != ((imm >> size) & mask)) {
-      size *= 2;
+      size <<= 1;
       break;
     }
   } while (size > 2);
 
+  u32 cto, ctz;
+
   // extract pattern e.g
   // 00000001 (from example above)
   u64 mask = ((u64)-1LL) >> (64 - size);
-  imm = imm & mask;
+  imm &= mask;
 
-  // determine rotation
-  *immr = countTrailingZeros(imm) == 0 ? 0 : size - countTrailingZeros(imm);
-
-  // imms
-  *imms = countTrailingOnes(imm >> *immr) == 0
-              ? 0
-              : countTrailingOnes(imm >> *immr) - 1;
-  if (size == 64) {
-    *N = 1;
+  if (isShiftedMask(imm)) {
+    ctz = countTrailingZeros(imm);
+    cto = countTrailingOnes(imm >> ctz);
   } else {
-    *N = 0;
-    *imms = *imms & (~size);
+    imm |= ~mask;
+    if (!isShiftedMask(~imm))
+      return 0;
+
+    u32 clo = countLeadingOnes(imm);
+    ctz = 64 - clo;
+    cto = clo + countTrailingOnes(imm) - (64 - size);
   }
+
+  // direction.
+  *immr = (size - ctz) & (size - 1);
+
+  // If size has a 1 in the n'th bit, create a value that has zeroes in
+  // bits [0, n] and ones above that.
+
+  u64 NImms = (u64)~(size - 1) << 1;
+
+  // Or the CTO value into the low bits, which must be below the Nth bit
+  // bit mentioned above.
+  NImms |= (cto - 1);
+
+  // Extract the seventh bit and toggle it to create the N field.
+  *N = ((NImms >> 6) & 1) ^ 1;
+
+  // 0x3f == 63
+  // take last 6 bits of NImms
+  *imms = NImms & 0x3f;
 
   return 1;
 }
@@ -167,11 +205,6 @@ u32 assembleLogicalImm(Fields *instruction) {
     return 0;
   }
 
-  u64 imm = 0;
-  if (!parseImmediateU64(instruction->fields[3].value, &imm)) {
-    // error here
-    return 0;
-  }
 
   if (Rd.extended && Rn.extended) {
     i.sf = 1;
@@ -182,7 +215,13 @@ u32 assembleLogicalImm(Fields *instruction) {
     return 0;
   }
 
-  if (!encodeLogicalImmediate(imm, &i.N, &i.immr, &i.imms, i.sf)) {
+  u64 imm = 0;
+  if (!parseImmediateU64(instruction->fields[3].value, &imm)) {
+    // error here
+    return 0;
+  }
+
+  if (!encodeBitmaskImmediate(imm, &i.N, &i.immr, &i.imms, i.sf)) {
     // error here
     return 0;
   }
@@ -240,10 +279,7 @@ u32 assembleLogicalShReg(Fields *instruction) {
       // error here
       return 0;
     }
-    if (i.sf && imm > 63) {
-      // error here
-      return 0;
-    } else if (!i.sf && imm > 31) {
+    if (imm >= (i.sf ? 64 : 32)) {
       // error here
       return 0;
     }
@@ -504,7 +540,7 @@ Signature decodeTokens(const Fields *instruction) {
     case T_REGISTER: {
       Register r;
       parseRegister(instruction->fields[i].value, &r);
-      if (r.n == 32) {
+      if (r.n == REGISTER_SP) {
         s_arr[i] = SP;
       } else {
         s_arr[i] = REGISTER;
@@ -524,7 +560,7 @@ Signature decodeTokens(const Fields *instruction) {
     case T_SHIFT:
       if (i + 1 < instruction->n_fields &&
           instruction->fields[i + 1].type == T_IMMEDIATE) {
-        s_arr[i] = T_SHIFT;
+        s_arr[i] = SHIFT;
       }
       // error here (shift without parameter)
       break;
@@ -608,7 +644,7 @@ u32 assemble(Fields *instruction) {
     return 0;
   }
 
-  if (i) {
+  if (i != 0) {
     return i;
   }
 
