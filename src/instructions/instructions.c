@@ -27,44 +27,6 @@ static const Instruction INSTRUCTIONS[] = {
     {{"DCPS1", "DCPS2", "DCPS3"}, EXCEPTION, {1, IMMEDIATE | OPTIONAL}},
 };
 
-static u8 countTrailingOnes(u64 n) {
-  u8 count = 0;
-  u64 mask = 1;
-  while ((n & mask) == 1) {
-    mask <<= 1;
-    count++;
-  }
-  return count;
-}
-
-static u8 countTrailingZeros(u64 n) {
-  u8 count = 0;
-  u64 mask = 1;
-  while ((n & mask) == 0) {
-    mask <<= 1;
-    count++;
-  }
-  return count;
-}
-
-inline static u8 countLeadingOnes(u64 n) {
-  u8 count = 0;
-  u64 mask = 1ULL << 63;
-  while ((n & mask) == 1) {
-    mask >>= 1;
-    count++;
-  }
-  return count;
-}
-
-inline static u8 isMask(u64 imm) {
-  return imm && ((imm + 1) & imm) == 0;
-}
-
-inline static u8 isShiftedMask(u64 imm) {
-  return imm && isMask((imm - 1) | imm);
-}
-
 u8 searchMnemonic(const char *mnemonic) {
   for (size_t i = 0; i < sizeof(INSTRUCTIONS) / sizeof(*INSTRUCTIONS); i++) {
     u8 j = 0;
@@ -96,64 +58,43 @@ u8 instructionIndex(InstructionType type, const char *mnemonic) {
 
 u32 assemblePcRelAddressing(Fields *instruction) { return 0; }
 
-u8 encodeBitmaskImmediate(u64 imm, u8 *N, u8 *immr, u8 *imms, u8 extended) {
-  // all 0 or all 1 cant be encoded
-  if (imm == 0ULL || ~imm == 0ULL) {
-    return 0;
-  }
 
-  // how to determine the element size:
-  // by comparing lower and higher half untill they match e.g.
-  //
-  // extended = true
-  // size = 64 / 2 = 32
-  // imm = 0000000100000001000000010000000100000001000000010000000100000001
-  //
-  // lower =  00000001000000010000000100000001
-  // higher = 00000001000000010000000100000001
-  // lower == higher; continue
-  //
-  // size = 16
-  // lower =  0000000100000001
-  // higher = 0000000100000001
-  // lower == higher; continue
-  //
-  // size = 8
-  // lower =  00000001
-  // higher = 00000001
-  // lower == higher; continue
-  //
-  // size = 4
-  // lower =  0001
-  // higher = 0000
-  // lower != higher;
-  //
-  // last time lower == higher was when size = 8
-  //
-  // result:
-  //  size = 8
+// SHAMELESSLY STOLEN FROM LLVM
 
-  u8 size = extended ? 64u : 32u;
+// Is this number's binary representation all 1s?
+u8 isMask(u64 imm) {
+   return ((imm + 1) & imm) == 0;
+}
+
+// Is this number's binary representation one or more 1s followed by
+// one or more 0s?
+u8 isShiftedMask(u64 imm) {
+   return isMask((imm - 1) | imm);
+}
+
+#define countTrailingZeros(x) __builtin_ctzll(x)
+#define countTrailingOnes(x)  __builtin_ctzll (~x)
+#define countLeadingOnes(x) __builtin_clzll (~x)
+
+bool encodeBitmaskImmediate(u64 imm, u64 *encoding, bool extended) {
+  if (imm == 0ULL || imm == ~0ULL)
+    return false;
+
+  // First, determine the element size.
+  u32 size = extended ? 64u : 32u;
+
   do {
     size >>= 1;
-    // mask used to extract lower (size / 2) bits e.g.
-    // if size == 64 = extract lower 32 bits
-    // if size == 32 = extract lower 16 bits
     u64 mask = (1ULL << size) - 1;
 
-    // (imm & mask) - lower half
-    // (imm >> size) & mask - higher half
-    // if lower half not equal higher half
     if ((imm & mask) != ((imm >> size) & mask)) {
       size <<= 1;
       break;
     }
   } while (size > 2);
 
+  // Second, determine the rotation to make the element be: 0^m 1^n.
   u32 cto, ctz;
-
-  // extract pattern e.g
-  // 00000001 (from example above)
   u64 mask = ((u64)-1LL) >> (64 - size);
   imm &= mask;
 
@@ -163,33 +104,32 @@ u8 encodeBitmaskImmediate(u64 imm, u8 *N, u8 *immr, u8 *imms, u8 extended) {
   } else {
     imm |= ~mask;
     if (!isShiftedMask(~imm))
-      return 0;
+      return false;
 
-    u32 clo = countLeadingOnes(imm);
+    u8 clo = countLeadingOnes(imm);
     ctz = 64 - clo;
     cto = clo + countTrailingOnes(imm) - (64 - size);
   }
 
+  // Encode in Immr the number of RORs it would take to get *from* 0^m 1^n
+  // to our target value, where I is the number of RORs to go the opposite
   // direction.
-  *immr = (size - ctz) & (size - 1);
+  assert(size > ctz && "I should be smaller than element size");
+  u32 immr = (size - ctz) & (size - 1);
 
   // If size has a 1 in the n'th bit, create a value that has zeroes in
   // bits [0, n] and ones above that.
-
-  u64 NImms = (u64)~(size - 1) << 1;
+  u64 nimms = ~(size-1) << 1;
 
   // Or the CTO value into the low bits, which must be below the Nth bit
   // bit mentioned above.
-  NImms |= (cto - 1);
+  nimms |= (cto-1);
 
   // Extract the seventh bit and toggle it to create the N field.
-  *N = ((NImms >> 6) & 1) ^ 1;
+  u8 N = ((nimms >> 6) & 1) ^ 1;
 
-  // 0x3f == 63
-  // take last 6 bits of NImms
-  *imms = NImms & 0x3f;
-
-  return 1;
+  *encoding = (N << 12) | (immr << 6) | (nimms & 0x3f);
+  return true;
 }
 
 u32 assembleLogicalImm(Fields *instruction) {
@@ -221,7 +161,8 @@ u32 assembleLogicalImm(Fields *instruction) {
     return 0;
   }
 
-  if (!encodeBitmaskImmediate(imm, &i.N, &i.immr, &i.imms, i.sf)) {
+  u64 encoding;
+  if (!encodeBitmaskImmediate(imm, &encoding, i.sf)) {
     // error here
     return 0;
   }
@@ -233,8 +174,7 @@ u32 assembleLogicalImm(Fields *instruction) {
   i.Rd = Rd.n;
 
   assembled_instruction |= ((u32)i.sf << 31) | ((u32)i.opc << 29) |
-                           ((u32)i.s_op << 23) | ((u32)i.N << 22) |
-                           ((u32)i.immr << 16) | ((u32)i.imms << 10) |
+                           ((u32)i.s_op << 23) | (encoding << 10) |
                            ((u32)i.Rn << 5) | i.Rd;
   return assembled_instruction;
 }
@@ -540,11 +480,13 @@ Signature decodeTokens(const Fields *instruction) {
     case T_REGISTER: {
       Register r;
       parseRegister(instruction->fields[i].value, &r);
-      if (r.n == REGISTER_SP) {
-        s_arr[i] = SP;
-      } else {
-        s_arr[i] = REGISTER;
+      if (r.n == REGISTER_ZR_SP) {
+        if (strcmp(instruction->fields[i].value + 1, "ZR") != 0) {
+          s_arr[i] = SP;
+          break;
+        }
       }
+      s_arr[i] = REGISTER;
       break;
     }
     case T_LABEL:
@@ -561,6 +503,7 @@ Signature decodeTokens(const Fields *instruction) {
       if (i + 1 < instruction->n_fields &&
           instruction->fields[i + 1].type == T_IMMEDIATE) {
         s_arr[i] = SHIFT;
+        break;
       }
       // error here (shift without parameter)
       break;

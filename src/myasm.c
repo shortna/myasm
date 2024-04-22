@@ -128,8 +128,9 @@ void secondPass(FILE *ir_file, FILE *dst) {
     if (f.fields->type == T_INSTRUCTION) {
       u32 instruction = assemble(&f);
       if (instruction != 0) {
-        printf("%s: ", f.fields->value);
-        printBinary(instruction);
+//        printf("%s: ", f.fields->value);
+        printf("%u\n", instruction);
+//        printBinary(instruction);
       }
     }
   } while (err);

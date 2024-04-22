@@ -152,11 +152,11 @@ u8 parseRegister(const char *reg, Register *r) {
 
   u8 n = 0;
   if (strcmp(reg + 1, "ZR") == 0) {
-    n = 31;
+    n = REGISTER_ZR_SP;
   }
 
   if (strcmp(reg, "WSP") == 0 || strcmp(reg, "SP") == 0) {
-    n = REGISTER_SP;
+    n = REGISTER_ZR_SP;
   }
 
   u64 res;
