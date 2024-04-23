@@ -30,7 +30,7 @@ typedef enum {
   SH_ROR = 3,
 } ShiftType;
 
-u8 parseLabelDeclaration(const char *label);
+u8 parseLabelDeclaration(char *label);
 u8 parseRegister(const char *reg, Register *r);
 u8 parseImmediateU8(const char *imm, u8 *res);
 u8 parseImmediateU16(const char *imm, u16 *res);

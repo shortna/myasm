@@ -1,8 +1,8 @@
 #include "instructions_api.h"
 #include "instructions.h"
+#include "tables.h"
 #include "types.h"
 #include "parser.h"
-#include "tables.h"
 #include <string.h>
 
 // Static opcodes

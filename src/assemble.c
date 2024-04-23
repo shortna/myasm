@@ -1,105 +1,89 @@
 #include "assemble.h"
-#include "elf.h"
+#include "directives.h"
+#include "instructions_api.h"
 #include "lexer.h"
 #include "tables.h"
 #include "types.h"
-#include "instructions_api.h"
+#include <elf.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-void printBinary(u32 n) {
-  for (u32 i = 0; i < sizeof(n) * 8; i++) {
-    printf("%d", (n >> ((sizeof(n) * 8) - i - 1)) & 1);
-  }
-  printf("\n");
-}
+#define TOKEN_MAX (40)
 
-// ir_file
-// TYPE|VALUE|PC
-FILE *ir_file = NULL;
-
-u8 firstPass(FILE *src) {
-  if (!src) {
-    return 0;
-  }
-
-  ir_file = tmpfile();
-  if (!ir_file) {
-    return 0;
-  }
-
-  initTables();
+u8 makeLabels(FILE *src) {
+  Token t = initToken(TOKEN_MAX);
   size_t pc = 0;
 
-  Token t = initToken(UINT8_MAX);
-  Fields f = initFields(UINT8_MAX);
-
-  u8 err = 0;
-  err = getToken(src, &t);
+  u8 ret = 1;
+  u8 res = 0;
   do {
+    res = getToken(src, &t);
     switch (t.type) {
     case T_LABEL_DECLARATION:
-      addToSym(t.value, pc, 0, ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE));
-      getToken(NULL, &t);
-      break;
-
-    case T_INSTRUCTION:
-      pc += 4;
-      __attribute__((fallthrough));
-    case T_DIRECTIVE:
-      do {
-        if (f.n_fields == FIELDS_MAX) {
-          break;
-        } 
-        copyToken(f.fields + f.n_fields, &t);
-        f.n_fields++;
-
-        err = getToken(NULL, &t);
-      } while (err && t.type != T_DIRECTIVE && t.type != T_INSTRUCTION &&
-               t.type != T_LABEL_DECLARATION);
-
-      fwrite(&f.n_fields, sizeof(f.n_fields), 1, ir_file);
-      for (u8 i = 0; i < f.n_fields; i++) {
-        writeToken(ir_file, f.fields + i);
+      if (!addToSym(t.value, pc, 0, ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE))) {
+        // error here
+        ret = 0;
       }
-
-      f.n_fields = 0;
-      break;
+    case T_INSTRUCTION:
+      pc += ARM_INSTRUCTION_SIZE;
+    default:
+      (void)NULL;
     }
-  } while (err);
+  } while (res);
 
   free(t.value);
+  return ret;
+}
+
+u8 collectLineOfTokens(FILE *src, Fields *f) {
+  u8 res = 1;
+  TokenType t = T_NONE;
+  f->n_fields = 0;
+
+  return res;
+}
+
+u8 makeAssemble(FILE *src, FILE *out) {
+  Fields f = initFields(TOKEN_MAX);
+  u8 ret = 0;
+
+  do {
+    ret = collectLineOfTokens(src, &f);
+    for (u8 i = 0; i < f.n_fields; i++) {
+      printf("%s ", f.fields[i].value);
+    }
+    printf("\n");
+  } while (ret);
+
   freeFields(&f);
-  fseek(ir_file, 0, SEEK_SET);
   return 1;
 }
 
-u8 secondPass(void) {
-  Fields f = initFields(UINT8_MAX);
-  //  fseek(dst, ELF64_SIZE, SEEK_SET);
+u8 make(FILE *src, char *out_name) {
+  //  FILE *out = NULL;
+  //  if (!out_name) {
+  //    out_name = alloca(10);
+  //    strcpy(out_name, "a.out");
+  //    out = fopen("a.out", "wb");
+  //  } else {
+  //    out = fopen(out_name, "wb");
+  //  }
+  //
+  //  if (!out) {
+  //    fprintf(stderr, "Failed to open %s file. Error: %s\n", out_name,
+  //            strerror(errno));
+  //    return 0;
+  //  }
 
-  u8 err = 0;
-  do {
-    fread(&f.n_fields, sizeof(f.n_fields), 1, ir_file);
-    for (u8 i = 0; i < f.n_fields; i++) {
-      err = readToken(ir_file, f.fields + i);
-    }
-    if (!err) {
-      break;
-    }
+  u8 ret = 1;
+  ret = makeLabels(src);
+  fseek(src, 0, SEEK_SET);
 
-    if (f.fields->type == T_INSTRUCTION) {
-      u32 instruction = assemble(&f);
-      if (instruction != 0) {
-        printf("%u\n", instruction);
-      }
-    }
-  } while (err);
+  //  ret = ret ? makeAssemble(src, out) : 0;
+  ret = ret ? makeAssemble(src, NULL) : 0;
+  //  fclose(out);
 
-  freeFields(&f);
-  fclose(ir_file);
-  
-  return 1;
+  return ret;
 }

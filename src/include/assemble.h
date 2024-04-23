@@ -7,7 +7,6 @@
 struct _IO_FILE;
 typedef struct _IO_FILE FILE;
 
-u8 firstPass(FILE *src);
-u8 secondPass(void);
+u8 make(FILE *src, char *out_name);
 
 #endif

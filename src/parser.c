@@ -4,8 +4,9 @@
 #include <string.h>
 
 // maybe add some constraints on label naming?
-u8 parseLabelDeclaration(const char *label) {
+u8 parseLabelDeclaration(char *label) {
   if (label[strlen(label) - 1] == ':') {
+    label[strlen(label) - 1] = '\0';
     return 1;
   }
   return 0;

@@ -9,6 +9,7 @@
 #include <string.h>
 
 FILE *SRC = NULL;
+size_t LINE = 0;
 
 TokenType getTokenType(Token *t) {
   switch (*t->value) {
@@ -46,7 +47,7 @@ TokenType getTokenType(Token *t) {
     return T_INSTRUCTION;
   }
 
-  if (searchDirective(t->value + 1)) {
+  if (searchDirective(t->value + 1) != -1) {
     return T_DIRECTIVE;
   }
 
@@ -76,10 +77,12 @@ u8 getToken(FILE *f, Token *t) {
         ch = fgetc(SRC);
       } while (ch != '\n' && ch != EOF);
       __attribute__((fallthrough));
+    case '\n':
+      LINE++;
+      __attribute__((fallthrough));
     case ' ':
     case ',':
     case '\t':
-    case '\n':
       // skip the char
       if (i != 0) {
         goto done;
@@ -122,6 +125,7 @@ Token initToken(size_t size) {
   Token t = {0};
   t.capacity = size;
   t.value = xmalloc(t.capacity * sizeof(*t.value));
+  *t.value = '\0';
   return t;
 }
 

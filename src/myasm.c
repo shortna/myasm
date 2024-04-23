@@ -12,15 +12,14 @@ int main(int argc, char **argv) {
 
   FILE *src = fopen(argv[1], "rb");
   if (!src) {
-    fprintf(stderr, "Failed to open ir file. Error: %s\n", strerror(errno));
+    fprintf(stderr, "Failed to open %s file. Error: %s\n", argv[1], strerror(errno));
     exit(EXIT_FAILURE);
   }
 
-  firstPass(src);
+  if (!make(src, NULL)) {
+    // printErrors();
+  }
   fclose(src);
-
-  secondPass();
-
   return EXIT_SUCCESS;
 }
 
