@@ -1,4 +1,6 @@
 #include "tables.h"
+#include "types.h"
+#include "elf.h"
 #include <stdlib.h>
 #include <string.h>
 #define TABLE_START_CAPACITY (10)
@@ -171,9 +173,6 @@ void freeTables(void) {
   freeTable(SECTIONS);
 }
 
-Elf64_Ehdr getHeader() {
-  Elf64_Ehdr hdr = {
-      {EI_MAG0, EI_MAG1, EI_MAG2, EI_MAG3, ELFCLASS64, EV_CURRENT,
-       ELFOSABI_SYSV, 0, 0, 0, 0, 0,  0, EI_NIDENT}};
-  return hdr;
+Elf64_Ehdr getHeader(void) {
+  return (Elf64_Ehdr){0};
 }

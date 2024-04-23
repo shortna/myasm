@@ -1,11 +1,12 @@
 SHELL=/bin/bash
 
 SRC_DIR := src
+INCLUDE_DIR := $(SRC_DIR)/include
 
 TARGET_DIR := build
 TARGET := myasm
 
-CFLAGS := -std=gnu11 -g -Wpedantic -Wall -Wextra -I $(SRC_DIR) \
+CFLAGS := -std=gnu11 -g -Wpedantic -Wall -Wextra -I $(INCLUDE_DIR) \
 					-fsanitize=address,pointer-compare,pointer-subtract,leak,undefined,null,bounds,alignment
 CC := clang
 

@@ -1,7 +1,8 @@
+#include "instructions_api.h"
 #include "instructions.h"
-#include "assemble.h"
-#include "lexer.h"
-#include "tables/tables.h"
+#include "types.h"
+#include "parser.h"
+#include "tables.h"
 #include <string.h>
 
 // Static opcodes
@@ -27,7 +28,7 @@ static const Instruction INSTRUCTIONS[] = {
     {{"DCPS1", "DCPS2", "DCPS3"}, EXCEPTION, {1, IMMEDIATE | OPTIONAL}},
 };
 
-u8 searchMnemonic(const char *mnemonic) {
+InstructionType searchMnemonic(const char *mnemonic) {
   for (size_t i = 0; i < sizeof(INSTRUCTIONS) / sizeof(*INSTRUCTIONS); i++) {
     u8 j = 0;
     while (INSTRUCTIONS[i].mnemonic[j]) {
@@ -56,7 +57,10 @@ u8 instructionIndex(InstructionType type, const char *mnemonic) {
   return 0;
 }
 
-u32 assemblePcRelAddressing(Fields *instruction) { return 0; }
+u32 assemblePcRelAddressing(Fields *instruction) {
+  (void) instruction;
+  return 0; 
+}
 
 
 // SHAMELESSLY STOLEN FROM LLVM
@@ -511,43 +515,46 @@ Signature decodeTokens(const Fields *instruction) {
       s_arr[i] = EXTEND;
       break;
 
-#warning "replace strcat in future or check length before concatinating"
-    case T_RSBRACE:
-    case T_LSBRACE:
-      s_arr[i] = BRACKETS;
-      u8 j = i;
-      do {
-        j++;
-        strcat(instruction->fields[i].value, instruction->fields[j].value);
-      } while (j < instruction->n_fields &&
-               instruction->fields[j].type != T_LSBRACE);
+      /*
+      #warning "replace strcat in future or check length before concatinating"
+          case T_RSBRACE:
+          case T_LSBRACE:
+            s_arr[i] = BRACKETS;
+            u8 j = i;
+            do {
+              j++;
+              strcat(instruction->fields[i].value,
+      instruction->fields[j].value); } while (j < instruction->n_fields &&
+                     instruction->fields[j].type != T_LSBRACE);
 
-      if (instruction->fields[j].type != T_LSBRACE) {
-        s_arr[i] = NONE;
-        // error here
-        break;
-      }
+            if (instruction->fields[j].type != T_LSBRACE) {
+              s_arr[i] = NONE;
+              // error here
+              break;
+            }
 
-      if (j + 1 < instruction->n_fields &&
-          instruction->fields[j + 1].type == T_BANG) {
-        strcat(instruction->fields[i].value, instruction->fields[j + 1].value);
-      }
-      break;
+            if (j + 1 < instruction->n_fields &&
+                instruction->fields[j + 1].type == T_BANG) {
+              strcat(instruction->fields[i].value, instruction->fields[j +
+      1].value);
+            }
+            break;
 
-    case T_PLUS:
-    case T_MINUS:
-      if (i + 1 < instruction->n_fields &&
-          instruction->fields[i + 1].type == T_IMMEDIATE) {
-        s_arr[i] = IMMEDIATE;
-        strcat(instruction->fields[i].value, instruction->fields[i + 1].value);
-        break;
-      }
-      // error here (sign without parameter)
-      break;
+          case T_PLUS:
+          case T_MINUS:
+            if (i + 1 < instruction->n_fields &&
+                instruction->fields[i + 1].type == T_IMMEDIATE) {
+              s_arr[i] = IMMEDIATE;
+              strcat(instruction->fields[i].value, instruction->fields[i +
+      1].value); break;
+            }
+            // error here (sign without parameter)
+            break;
 
-    case T_DOLLAR:
-#warning "figure out dollar"
-      break;
+          case T_DOLLAR:
+      #warning "figure out dollar"
+            break;
+          */
     }
   }
 
@@ -559,6 +566,7 @@ u32 assemble(Fields *instruction) {
   if (!instruction || instruction->n_fields == 0) { // sanity check
     return 0;
   }
+
   Signature s = decodeTokens(instruction);
   InstructionType it = getInstructionType(instruction->fields->value, &s);
 
@@ -587,9 +595,5 @@ u32 assemble(Fields *instruction) {
     return 0;
   }
 
-  if (i != 0) {
-    return i;
-  }
-
-  return 0;
+  return i ? i : 0;
 }

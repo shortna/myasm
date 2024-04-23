@@ -1,9 +1,11 @@
-#ifndef MYASM_TABLES_API
-#define MYASM_TABLES_API
+#ifndef MYASM_TABLES
+#define MYASM_TABLES
 
-#include "types.h"
-#include <elf.h>
+#include "myasm.h"
 #define ELF64_SIZE (64)
+
+typedef u64 Elf64_Off;
+typedef u64 Elf64_Addr;
 
 void initTables(void);
 void freeTables(void);
@@ -16,6 +18,5 @@ ssize_t searchInSym(const char *needle);
 ssize_t searchInShdr(const char *needle);
 
 ssize_t getLabelPc(const char *needle);
-Elf64_Ehdr getHeader();
 
 #endif

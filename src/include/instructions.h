@@ -1,9 +1,8 @@
 #ifndef MYASM_ARM_INSTRUCTIONS
 #define MYASM_ARM_INSTRUCTIONS
 
-#include "lexer.h"
-
 #define ARM_INSTRUCTION_SIZE (4)
+#include "myasm.h"
 
 typedef struct LogicalImm {
   u8 sf;   // 1 bit sign field = 1 for 64 bit
@@ -87,19 +86,11 @@ typedef struct Signature {
   Argument a7;
 } Signature;
 
-typedef enum {
-  NONE,
-  LOGICAL_IMM,
-  LOGICAL_SH_REG,
-  MOVEWIDE,
-  ADDSUB_IMM,
-  PCRELADDRESSING,
-  EXCEPTION,
-} InstructionType;
+typedef enum InstructionType InstructionType;
 
 typedef struct Instruction {
   char const *const mnemonic[10];
-  const InstructionType type;
+  const enum InstructionType type;
   const Signature s;
 } Instruction;
 

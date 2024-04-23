@@ -19,6 +19,5 @@ typedef int64_t i64;
 
 void *xmalloc(size_t size);
 void *xrealloc(void *p, size_t size);
-void printBinary(u32 n);
 
 #endif

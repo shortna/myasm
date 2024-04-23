@@ -4,8 +4,10 @@
 #include "myasm.h"
 
 // forward declaration
-struct Fields;
-u8 searchMnemonic(const char *mnemonic);
-u32 assemble(struct Fields *instruction);
+struct _IO_FILE;
+typedef struct _IO_FILE FILE;
+
+u8 firstPass(FILE *src);
+u8 secondPass(void);
 
 #endif

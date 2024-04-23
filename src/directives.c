@@ -1,10 +1,14 @@
-#include "directives.h"
-#include "instructions/lexer.h"
-#include "tables/tables.h"
+#include "types.h"
 #include <string.h>
 
-u8 dGlobal(Fields *f) {}
-u8 dSection(Fields *f) {}
+u8 dGlobal(Fields *f) {
+  (void)f;
+  return 0;
+}
+u8 dSection(Fields *f) {
+  (void)f;
+  return 0;
+}
 
 typedef struct Directive {
   const char *name;
@@ -26,4 +30,6 @@ u8 searchDirective(const char *name) {
 }
 
 u8 execDirective(Fields *f) {
+  (void)f;
+  return 0;
 }
