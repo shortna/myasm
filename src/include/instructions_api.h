@@ -8,17 +8,7 @@
 struct Fields;
 typedef struct Fields Fields;
 
-typedef enum InstructionType {
-  NONE,
-  LOGICAL_IMM,
-  LOGICAL_SH_REG,
-  MOVEWIDE,
-  ADDSUB_IMM,
-  PCRELADDRESSING,
-  EXCEPTION,
-} InstructionType;
-
 u32 assemble(Fields *instruction);
-InstructionType searchMnemonic(const char *mnemonic);
+u8 searchMnemonic(const char *mnemonic);
 
 #endif

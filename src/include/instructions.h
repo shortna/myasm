@@ -86,11 +86,19 @@ typedef struct Signature {
   Argument a7;
 } Signature;
 
-typedef enum InstructionType InstructionType;
+typedef enum InstructionType {
+  NONE,
+  LOGICAL_IMM,
+  LOGICAL_SH_REG,
+  MOVEWIDE,
+  ADDSUB_IMM,
+  PCRELADDRESSING,
+  EXCEPTION,
+} InstructionType;
 
 typedef struct Instruction {
   char const *const mnemonic[10];
-  const enum InstructionType type;
+  const InstructionType type;
   const Signature s;
 } Instruction;
 

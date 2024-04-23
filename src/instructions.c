@@ -28,7 +28,7 @@ static const Instruction INSTRUCTIONS[] = {
     {{"DCPS1", "DCPS2", "DCPS3"}, EXCEPTION, {1, IMMEDIATE | OPTIONAL}},
 };
 
-InstructionType searchMnemonic(const char *mnemonic) {
+u8 searchMnemonic(const char *mnemonic) {
   for (size_t i = 0; i < sizeof(INSTRUCTIONS) / sizeof(*INSTRUCTIONS); i++) {
     u8 j = 0;
     while (INSTRUCTIONS[i].mnemonic[j]) {
