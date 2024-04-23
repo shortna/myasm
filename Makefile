@@ -12,7 +12,7 @@ CC := clang
 
 # MCL
 # Make Clang Lsp
-.PHONY: all clean MCL
+.PHONY: all clean MCL test
 
 all: $(TARGET_DIR) $(TARGET)
 
@@ -24,6 +24,10 @@ $(TARGET): $(shell find $(SRC_DIR) -name *.c)
 
 MCL:
 	bear -- make
+
+test:
+	@$(MAKE) $(TARGET) > /dev/null 2>&1
+	@make -C test --no-print-directory
 
 clean:
 	$(RM) -r $(TARGET_DIR)
