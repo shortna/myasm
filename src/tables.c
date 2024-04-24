@@ -4,74 +4,67 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define TABLE_START_CAPACITY (10)
-
-#define initTable(table)                                                       \
-  do {                                                                         \
-    table.capacity = TABLE_START_CAPACITY;                                     \
-    table.count = 0;                                                           \
-    table.items = xmalloc(table.capacity * sizeof(*table.items));              \
-    table.str = initStr();                                                     \
-  } while (0)
-
-#define freeTable(table)                                                       \
-  do {                                                                         \
-    free(table.str.s);                                                         \
-    free(table.items);                                                         \
-  } while (0)
-
-#define resizeTable(table)                                                     \
-  do {                                                                         \
-    table.capacity *= 2;                                                       \
-    table.items =                                                              \
-        xrealloc(table.items, sizeof(*table.items) * table.capacity);          \
-  } while (0)
-
-// usage:
-// int res;
-// searchInTable(table, needle, res)
-#define searchInTable(table, needle, res)                                      \
-  do {                                                                         \
-    res = -1;                                                                  \
-    char *__s = table.str.s + 1;                                               \
-    size_t __i = 1;                                                            \
-    while (__i < table.count) {                                                \
-      if (strcmp(__s, needle) == 0) {                                          \
-        res = __i;                                                             \
-        break;                                                                 \
-      }                                                                        \
-      __s += strlen(__s) + 1;                                                  \
-      __i++;                                                                   \
-    }                                                                          \
-  } while (0)
+#define TALBE_START_SIZE (10)
 
 typedef struct SymTable {
-  Str str;
+  char *strtab;
   Elf64_Sym *items;
   size_t count;
   size_t capacity;
 } SymTable;
 
 typedef struct ShdrTable {
-  Str str;
+  char *shstrtab;
   Elf64_Shdr *items;
   size_t count;
   size_t capacity;
 } ShdrTable;
 
-SymTable SYMBOLS = {0};
-ShdrTable SECTIONS = {0};
+static SymTable SYMBOLS = {0};
+static ShdrTable SECTIONS = {0};
 
-void initTables(void) {
-  initTable(SYMBOLS);
-  initTable(SECTIONS);
-  addToShdr(NULL, SHT_NULL, 0, 0, 0, 0, 0, 0);
-  addToSym(NULL, 0, 0, 0);
+void initSymbolTable(void) {
+  SYMBOLS.items = xmalloc(TALBE_START_SIZE * sizeof(*SYMBOLS.items));
+  SYMBOLS.strtab =
+      xcalloc(TALBE_START_SIZE, TOKEN_SIZE * sizeof(*SYMBOLS.strtab));
+
+  SYMBOLS.count = 0;
+  SYMBOLS.capacity = TALBE_START_SIZE;
+
+  addToSym("", 0, 0, 0);
 }
 
-void freeTables(void) {
-  freeTable(SYMBOLS);
-  freeTable(SECTIONS);
+void initShdrTable(void) {
+  SECTIONS.items = xmalloc(TALBE_START_SIZE * sizeof(*SECTIONS.items));
+  SECTIONS.shstrtab =
+      xcalloc(TALBE_START_SIZE, TOKEN_SIZE * sizeof(*SECTIONS.shstrtab));
+
+  SECTIONS.count = 0;
+  SECTIONS.capacity = TALBE_START_SIZE;
+  addToShdr("", SHT_NULL, 0, 0, 0, 0, 0, 0);
+}
+
+void freeSymoblTable(void) {
+  free(SYMBOLS.items);
+  free(SYMBOLS.strtab);
+}
+
+void freeShdrTable(void) {
+  free(SECTIONS.items);
+  free(SECTIONS.shstrtab);
+}
+
+ssize_t searchTable(const char *needle, const char *strtable, size_t count) {
+  strtable++; // skip first entry cause its always \0
+  size_t i = 1;
+  while (i < count) {
+    if (strcmp(needle, strtable) == 0) {
+      return i;
+    }
+    strtable += strlen(strtable) + 1;
+    i++;
+  }
+  return -1;
 }
 
 ssize_t searchInSym(const char *needle) {
@@ -79,8 +72,7 @@ ssize_t searchInSym(const char *needle) {
     return -1;
   }
 
-  ssize_t res = -1;
-  searchInTable(SYMBOLS, needle, res);
+  ssize_t res = searchTable(needle, SYMBOLS.strtab, SYMBOLS.count);
   return res;
 }
 
@@ -89,9 +81,27 @@ ssize_t searchInShdr(const char *needle) {
     return -1;
   }
 
-  ssize_t res = -1;
-  searchInTable(SECTIONS, needle, res);
+  ssize_t res = searchTable(needle, SECTIONS.shstrtab, SECTIONS.count);
   return res;
+}
+
+void resizeSymTable(void) {
+  SYMBOLS.capacity *= 2;
+  SYMBOLS.items =
+      xrealloc(SYMBOLS.items, SYMBOLS.capacity * sizeof(*SYMBOLS.items));
+
+  SYMBOLS.strtab = xrealloc(SYMBOLS.strtab, SYMBOLS.capacity * TOKEN_SIZE *
+                                                sizeof(*SYMBOLS.strtab));
+}
+
+void resizeShdrTable(void) {
+  SECTIONS.capacity *= 2;
+  SECTIONS.items =
+      xrealloc(SECTIONS.items, SECTIONS.capacity * sizeof(*SECTIONS.items));
+
+  SECTIONS.shstrtab =
+      xrealloc(SECTIONS.shstrtab,
+               SECTIONS.capacity * TOKEN_SIZE * sizeof(*SECTIONS.shstrtab));
 }
 
 ssize_t getLabelPc(const char *needle) {
@@ -102,22 +112,34 @@ ssize_t getLabelPc(const char *needle) {
   return SYMBOLS.items[res].st_value; // return pc
 }
 
+// concats s to table with delemiter between '\0' them
+u8 concatStrs(char *table, const char *s, size_t count) {
+  table++;
+  size_t i = 1;
+  while (i < count) {
+    table += strlen(table) + 1;
+    i++;
+  }
+
+  strncat(table, s, TOKEN_SIZE - 1);
+  return 1;
+}
+
 u8 addToSym(const char *name, Elf64_Addr st_value, u64 st_size, u8 st_info) {
   ssize_t res = searchInSym(name);
   if (res != -1) {
     return 0;
   }
 
-  if (SYMBOLS.count == SYMBOLS.capacity) {
-    resizeTable(SYMBOLS);
+  if (SYMBOLS.count == SYMBOLS.capacity + 1) {
+    resizeSymTable();
   }
-  concatCStr(&SYMBOLS.str, name);
-  SYMBOLS.str.len++;
+  concatStrs(SYMBOLS.strtab, name, SYMBOLS.count);
   Elf64_Sym *item = SYMBOLS.items + SYMBOLS.count;
   item->st_name = SYMBOLS.count;
   item->st_value = st_value;
   item->st_size = st_size;
-  item->st_info = st_info;
+  item->st_info = ELF64_ST_INFO(STB_LOCAL, st_info);
   item->st_other = STV_DEFAULT;
   item->st_shndx = SECTIONS.count - 1;
   SYMBOLS.count++;
@@ -133,10 +155,9 @@ u8 addToShdr(const char *name, u32 sh_type, u64 sh_flags, Elf64_Off sh_offset,
   }
 
   if (SECTIONS.count == SECTIONS.capacity) {
-    resizeTable(SECTIONS);
+    resizeShdrTable();
   }
-  concatCStr(&SECTIONS.str, name);
-  SECTIONS.str.len++;
+  concatStrs(SECTIONS.shstrtab, name, SECTIONS.count);
   Elf64_Shdr *item = SECTIONS.items + SECTIONS.count;
   item->sh_name = SECTIONS.count;
   item->sh_type = sh_type;
@@ -152,7 +173,6 @@ u8 addToShdr(const char *name, u32 sh_type, u64 sh_flags, Elf64_Off sh_offset,
   return 1;
 }
 
-// sketchy teritory
 u8 changeBinding(size_t ind, u8 binding) {
   if (ind >= SYMBOLS.count) {
     return 0;
@@ -163,34 +183,88 @@ u8 changeBinding(size_t ind, u8 binding) {
   return 1;
 }
 
-void backputchTables(size_t pc_end) {
+// FIX THIS SHIT
+size_t getEnd(void) {
+  size_t end = SECTIONS.items[SECTIONS.count - 1].sh_offset +
+               SECTIONS.items[SECTIONS.count - 1].sh_size;
+  //  if ((end & 1) != 0) {
+  //    end += 1;
+  //  }
+
+  return end;
+}
+
+void backputchSections(size_t pc_end) {
+  Elf64_Shdr *s = SECTIONS.items;
   for (size_t i = 0; i < SECTIONS.count - 1; i++) {
-    SECTIONS.items[i].sh_size =
-        SECTIONS.items[i + 1].sh_size - SECTIONS.items[i].sh_size;
+    s[i].sh_size = s[i + 1].sh_offset - s[i].sh_offset;
   }
-  SECTIONS.items[SECTIONS.count - 1].sh_size =
-      pc_end - SECTIONS.items[SECTIONS.count - 1].sh_size;
+  s[SECTIONS.count - 1].sh_size = pc_end - s[SECTIONS.count - 1].sh_offset;
 }
 
-size_t START_OF_SECTION_HEADERS = 0;
-void dumpTables(FILE *f) {
+size_t getStrTableSize(const char *table, size_t count) {
+  const char *start = table;
+  size_t i = 1;
+  while (i < count) {
+    table += strlen(table) + 1;
+    i++;
+  }
+
+  return table - start;
 }
 
-void getHeader(void *Elf_Ehdr) {
-  Elf64_Ehdr h = {{EI_MAG0, EI_MAG1, EI_MAG2, EI_MAG3, ELFCLASS64, ELFDATA2LSB,
+void dumpTables(void) {
+  Elf64_Shdr *last = SECTIONS.items + SECTIONS.count - 1;
+  addToShdr(".SYMTAB", SHT_SYMTAB, 0, getEnd(), SECTIONS.count, SYMBOLS.count,
+            8, sizeof(*SYMBOLS.items));
+  last++;
+  last->sh_size = SYMBOLS.count * sizeof(*SYMBOLS.items);
+
+  addToShdr(".STRTAB", SHT_STRTAB, 0, getEnd(), 0, 0, 1, 0);
+  last++;
+  last->sh_size = getStrTableSize(SYMBOLS.strtab, SYMBOLS.count);
+
+  addToShdr(".SHSTRTAB", SHT_STRTAB, 0, getEnd(), 0, 0, 1, 0);
+  last++;
+  last->sh_size = getStrTableSize(SECTIONS.shstrtab, SECTIONS.count);
+}
+
+u8 writeTables(FILE *out, size_t pc_end) {
+  backputchSections(pc_end);
+  dumpTables();
+
+  fwrite(SYMBOLS.items, sizeof(*SYMBOLS.items), SYMBOLS.count,
+         out); // write symtable
+
+  fwrite(SYMBOLS.strtab, getStrTableSize(SYMBOLS.strtab, SYMBOLS.count), 1,
+         out);
+  fwrite(SECTIONS.shstrtab, getStrTableSize(SECTIONS.shstrtab, SECTIONS.count),
+         1, out);
+
+  fwrite(SECTIONS.items, sizeof(*SECTIONS.items), SECTIONS.count, out);
+
+  return 1;
+}
+// FIX THIS SHIT
+
+u8 writeHeader(FILE *out) {
+  Elf64_Off e_shoff = getEnd();
+  Elf64_Ehdr h = {{ELFMAG0, ELFMAG1, ELFMAG2, ELFMAG3, ELFCLASS64, ELFDATA2LSB,
                    EV_CURRENT, ELFOSABI_SYSV, 0, 0, 0, 0, 0, 0, 0, EI_NIDENT},
                   ET_REL,
                   EM_AARCH64,
                   EV_CURRENT,
                   0,
                   0,
-                  START_OF_SECTION_HEADERS,
+                  e_shoff,
                   0,
                   ELF64_SIZE,
                   0,
                   0,
                   sizeof(Elf64_Shdr),
-                  SECTIONS.count + 3,
-                  SECTIONS.count + 2};
-  memcpy(Elf_Ehdr, &h, sizeof(h));
+                  SECTIONS.count,
+                  SECTIONS.count - 1};
+
+  fwrite(&h, sizeof(h), 1, out);
+  return 1;
 }

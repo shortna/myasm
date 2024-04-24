@@ -18,6 +18,7 @@ typedef int32_t i32;
 typedef int64_t i64;
 
 void *xmalloc(size_t size);
+void *xcalloc(size_t nmemb, size_t size);
 void *xrealloc(void *p, size_t size);
 
 #endif

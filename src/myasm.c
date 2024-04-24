@@ -32,6 +32,15 @@ void *xmalloc(size_t size) {
   return p;
 }
 
+void *xcalloc(size_t nmemb, size_t size) {
+  void *p = calloc(nmemb, size);
+  if (!p) {
+    fprintf(stderr, "%s\n", strerror(errno));
+    exit(EXIT_FAILURE);
+  }
+  return p;
+}
+
 void *xrealloc(void *p, size_t size) {
   p = realloc(p, size);
   if (!p) {

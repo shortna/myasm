@@ -1,12 +1,10 @@
 #include "lexer.h"
-#include "instructions_api.h"
 #include "directives.h"
-#include "types.h"
+#include "instructions_api.h"
 #include "parser.h"
+#include "types.h"
 #include <ctype.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 FILE *SRC = NULL;
 size_t LINE = 0;
@@ -72,13 +70,13 @@ u8 getToken(FILE *f, Token *t) {
   // you cant use upper case for labels
   while ((ch = toupper(getc(SRC))) != EOF) {
     switch (ch) {
-    case '/':
-      do {
-        ch = fgetc(SRC);
-      } while (ch != '\n' && ch != EOF);
-      __attribute__((fallthrough));
     case '\n':
       LINE++;
+      __attribute__((fallthrough));
+    case '/':
+      while (ch != '\n' && ch != EOF) {
+        ch = fgetc(SRC);
+      }
       __attribute__((fallthrough));
     case ' ':
     case ',':
@@ -112,77 +110,12 @@ u8 getToken(FILE *f, Token *t) {
   }
 
   if (ch == EOF) {
+    LINE = 0;
     return 0;
   }
 
 done:
   t->value[i] = '\0';
   t->type = getTokenType(t);
-  return 1;
-}
-
-Token initToken(size_t size) {
-  Token t = {0};
-  t.capacity = size;
-  t.value = xmalloc(t.capacity * sizeof(*t.value));
-  *t.value = '\0';
-  return t;
-}
-
-Fields initFields(size_t size_of_field) {
-  Fields f = {0};
-  for (u8 i = 0; i < FIELDS_MAX; i++) {
-    f.fields[i] = initToken(size_of_field);
-  }
-  return f;
-}
-
-void copyToken(Token *dst, const Token *src) {
-  if (dst->capacity < src->capacity) {
-    dst->capacity = src->capacity;
-    dst->value = xrealloc(dst->value, dst->capacity * sizeof(*dst->value));
-  }
-  dst->type = src->type;
-  strcpy(dst->value, src->value);
-}
-
-void freeFields(Fields *fields) {
-  if (!fields) {
-    return;
-  }
-  for (u8 i = 0; i < FIELDS_MAX; i++) {
-    free(fields->fields[i].value);
-  }
-}
-
-u8 writeToken(FILE *f, const Token *t) {
-  if (!f || !t) {
-    return 0;
-  }
-
-  fwrite(&t->type, sizeof(t->type), 1, f);
-  fwrite(&t->capacity, sizeof(t->capacity), 1, f);
-
-  size_t n = strlen(t->value) + 1;
-  fwrite(&n, sizeof(n), 1, f);
-  fwrite(t->value, n, 1, f);
-  return 1;
-}
-
-u8 readToken(FILE *f, Token *t) {
-  if (!f || !t) {
-    return 0;
-  }
-
-  if (feof(f)) {
-    return 0;
-  }
-
-  fread(&t->type, sizeof(t->type), 1, f);
-  fread(&t->capacity, sizeof(t->capacity), 1, f);
-
-  size_t n;
-  fread(&n, sizeof(n), 1, f);
-  fread(t->value, n, 1, f);
   return 1;
 }

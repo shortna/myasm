@@ -15,6 +15,7 @@
 u8 makeLabels(FILE *src) {
   Token t = initToken(TOKEN_MAX);
   size_t pc = 0;
+  initSymbolTable();
 
   u8 ret = 1;
   u8 res = 0;
@@ -38,52 +39,96 @@ u8 makeLabels(FILE *src) {
 }
 
 u8 collectLineOfTokens(FILE *src, Fields *f) {
-  u8 res = 1;
-  TokenType t = T_NONE;
+  u8 res = 0;
   f->n_fields = 0;
+  size_t cur_line = LINE;
 
+  do {
+    res = getToken(src, f->fields + f->n_fields);
+    if (f->fields[f->n_fields].type == T_LABEL_DECLARATION) {
+      f->n_fields--;
+      cur_line = LINE;
+    }
+    f->n_fields++;
+  } while (res && cur_line == LINE && f->n_fields != FIELDS_MAX + 1);
+
+  if (!res) {
+    f->n_fields--;
+  }
   return res;
 }
 
+// first write to ir_file if everything ok
+// write to out else
+// return 0
 u8 makeAssemble(FILE *src, FILE *out) {
   Fields f = initFields(TOKEN_MAX);
   u8 ret = 0;
+  size_t pc = 0;
+  initShdrTable();
+  fseek(out, ELF64_SIZE, SEEK_SET);
 
+  FILE *ir_file = tmpfile();
   do {
     ret = collectLineOfTokens(src, &f);
-    for (u8 i = 0; i < f.n_fields; i++) {
-      printf("%s ", f.fields[i].value);
+    switch (f.fields->type) {
+    case T_INSTRUCTION: {
+      u32 instruction = assemble(&f);
+      if (!instruction) {
+        // error here
+        break;
+      }
+      fwrite(&instruction, sizeof(instruction), 1, out);
+      pc += ARM_INSTRUCTION_SIZE;
+      break;
     }
-    printf("\n");
+    case T_DIRECTIVE:
+      if (!execDirective(&f, pc)) {
+        // error here
+        break;
+      }
+    default:
+      (void)NULL;
+    }
   } while (ret);
 
+  // if (ERRORS.count != 0) {
+  // fclose(ir_file);
+  // freeFields(&f);
+  // return 0;
+  // }
+
+  writeTables(out, pc);
+  fseek(out, 0, SEEK_SET);
+  writeHeader(out);
+
+  fclose(ir_file);
   freeFields(&f);
+  freeShdrTable();
+  freeSymoblTable();
   return 1;
 }
 
 u8 make(FILE *src, char *out_name) {
-  //  FILE *out = NULL;
-  //  if (!out_name) {
-  //    out_name = alloca(10);
-  //    strcpy(out_name, "a.out");
-  //    out = fopen("a.out", "wb");
-  //  } else {
-  //    out = fopen(out_name, "wb");
-  //  }
-  //
-  //  if (!out) {
-  //    fprintf(stderr, "Failed to open %s file. Error: %s\n", out_name,
-  //            strerror(errno));
-  //    return 0;
-  //  }
+  FILE *out = NULL;
+  if (!out_name) {
+    out_name = alloca(8);
+    strcpy(out_name, "a.out");
+  }
+
+  out = fopen(out_name, "wb");
+  if (!out) {
+    fprintf(stderr, "Failed to open %s file. Error: %s\n", out_name,
+            strerror(errno));
+    return 0;
+  }
 
   u8 ret = 1;
-  ret = makeLabels(src);
+  makeLabels(src);
   fseek(src, 0, SEEK_SET);
 
-  //  ret = ret ? makeAssemble(src, out) : 0;
-  ret = ret ? makeAssemble(src, NULL) : 0;
-  //  fclose(out);
+  makeAssemble(src, out);
+  fclose(out);
 
   return ret;
 }

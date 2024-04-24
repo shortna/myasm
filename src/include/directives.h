@@ -7,6 +7,6 @@ struct Fields;
 typedef struct Fields Fields;
 
 i8 searchDirective(const char *name);
-u8 execDirective(Fields *f, size_t pc, void *ret);
+u8 execDirective(Fields *f, size_t pc); 
 
 #endif

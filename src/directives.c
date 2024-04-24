@@ -1,8 +1,9 @@
+#include "directives.h"
 #include "instructions_api.h"
 #include "tables.h"
-#include <elf.h>
 #include "types.h"
 #include <ctype.h>
+#include <elf.h>
 #include <string.h>
 
 u8 dGlobal(const Fields *f) {
@@ -33,8 +34,8 @@ u8 dSection(const Fields *f, size_t offset) {
   }
 
   u8 flags = 0;
-  const char *str_flags = f->fields[2].value;
-  while (*str_flags) {
+  const char *str_flags = f->fields[2].value + 1;
+  while (*str_flags && *str_flags != '"') {
     if (!isupper(*str_flags)) {
       return 0;
     }
@@ -49,6 +50,7 @@ u8 dSection(const Fields *f, size_t offset) {
 
   u8 allign = flags & SHF_EXECINSTR ? ARM_INSTRUCTION_SIZE : 1; // if executable allign to 4
   addToShdr(f->fields[1].value, SHT_PROGBITS, flags, offset, 0, 0, allign, 0);
+  addToSym(f->fields[1].value, 0, 0, STT_SECTION);
   return 1;
 }
 
@@ -63,18 +65,20 @@ i8 searchDirective(const char *name) {
   return -1;
 }
 
-u8 execDirective(Fields *f, size_t pc, void *ret) {
+u8 execDirective(Fields *f, size_t pc) {
   i8 n = searchDirective(f->fields->value + 1);
   u8 res = 0;
+
   switch (n) {
   case -1:
-    return 0;
+    break;
   case 0:
     res = dGlobal(f);
+    break;
   case 1:
     res = dSection(f, pc);
+    break;
   }
 
-  (void)ret;
   return res;
 }

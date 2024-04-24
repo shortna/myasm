@@ -555,6 +555,8 @@ Signature decodeTokens(const Fields *instruction) {
       #warning "figure out dollar"
             break;
           */
+    default:
+      (void)NULL;
     }
   }
 
