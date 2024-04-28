@@ -137,6 +137,3 @@ DCPS1	0X0
 DCPS1	0Xffff
 DCPS2	0Xffff
 DCPS3	0Xffff
-//
-//.section .data
-//msg:

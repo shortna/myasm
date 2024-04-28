@@ -2,7 +2,6 @@
 #include "instructions_api.h"
 #include "tables.h"
 #include "types.h"
-#include <ctype.h>
 #include <elf.h>
 #include <string.h>
 
@@ -22,6 +21,43 @@ u8 dGlobal(const Fields *f) {
   return 1;
 }
 
+//  W (write), A (alloc), X (execute), M (merge), S (strings), I (info),
+//  L (link order), O (extra OS processing required), G (group), T (TLS),
+//  C (compressed), x (unknown), o (OS specific), E (exclude),
+//  D (mbind), p (processor specific)
+typedef struct Flags {
+  const char name;
+  const u16 value;
+} Flags;
+
+Flags FLAGS[] = {
+    {'W', SHF_WRITE},      {'A', SHF_ALLOC},
+    {'X', SHF_EXECINSTR},  {'M', SHF_MERGE},
+    {'S', SHF_STRINGS},    {'I', SHF_INFO_LINK},
+    {'L', SHF_LINK_ORDER}, {'O', SHF_OS_NONCONFORMING},
+    {'G', SHF_GROUP},      {'T', SHF_TLS},
+    {'C', SHF_COMPRESSED},
+};
+
+u8 decodeFlags(const char *flags, u64 *res) {
+  *res = 0;
+  flags++;
+  while (*flags && *flags != '"') {
+    bool valid_flag = false;
+    for (u8 i = 0; i < sizeof(FLAGS) / sizeof(*FLAGS); i++) {
+      if (*flags == FLAGS[i].name) {
+        valid_flag = true;
+        *res |= FLAGS[i].value;
+      }
+    }
+    if (!valid_flag) {
+      return 0;
+    }
+    flags++;
+  }
+  return 1;
+}
+
 u8 dSection(const Fields *f, size_t offset) {
   if (f->n_fields != 3) {
     // error here
@@ -33,23 +69,12 @@ u8 dSection(const Fields *f, size_t offset) {
     return 0;
   }
 
-  u8 flags = 0;
-  const char *str_flags = f->fields[2].value + 1;
-  while (*str_flags && *str_flags != '"') {
-    if (!isupper(*str_flags)) {
-      return 0;
-    }
-
-    flags |= *str_flags - 'A';
-    str_flags++;
-  }
-  if (flags >= 8) {
-    // error here
+  u64 flags;
+  if (!decodeFlags(f->fields[2].value, &flags)) {
     return 0;
   }
 
-  u8 allign = flags & SHF_EXECINSTR ? ARM_INSTRUCTION_SIZE : 1; // if executable allign to 4
-  addToShdr(f->fields[1].value, SHT_PROGBITS, flags, offset, 0, 0, allign, 0);
+  addToShdr(f->fields[1].value, SHT_PROGBITS, flags, offset, 0, 0, 0);
   addToSym(f->fields[1].value, 0, 0, STT_SECTION);
   return 1;
 }

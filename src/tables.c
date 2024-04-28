@@ -41,7 +41,7 @@ void initShdrTable(void) {
 
   SECTIONS.count = 0;
   SECTIONS.capacity = TALBE_START_SIZE;
-  addToShdr("", SHT_NULL, 0, 0, 0, 0, 0, 0);
+  addToShdr("", SHT_NULL, 0, 0, 0, 0, 0);
 }
 
 void freeSymoblTable(void) {
@@ -147,7 +147,7 @@ u8 addToSym(const char *name, Elf64_Addr st_value, u64 st_size, u8 st_info) {
 }
 
 u8 addToShdr(const char *name, u32 sh_type, u64 sh_flags, Elf64_Off sh_offset,
-             u32 sh_link, u32 sh_info, u64 sh_addralign, u64 sh_entsize) {
+             u32 sh_link, u32 sh_info, u64 sh_entsize) {
 
   ssize_t res = searchInShdr(name);
   if (res != -1) {
@@ -167,7 +167,7 @@ u8 addToShdr(const char *name, u32 sh_type, u64 sh_flags, Elf64_Off sh_offset,
   item->sh_size = 0;
   item->sh_link = sh_link;
   item->sh_info = sh_info;
-  item->sh_addralign = sh_addralign;
+  item->sh_addralign = 0;
   item->sh_entsize = sh_entsize;
   SECTIONS.count++;
   return 1;
@@ -183,72 +183,22 @@ u8 changeBinding(size_t ind, u8 binding) {
   return 1;
 }
 
-// FIX THIS SHIT
-size_t getEnd(void) {
-  size_t end = SECTIONS.items[SECTIONS.count - 1].sh_offset +
-               SECTIONS.items[SECTIONS.count - 1].sh_size;
-  //  if ((end & 1) != 0) {
-  //    end += 1;
-  //  }
-
-  return end;
-}
-
-void backputchSections(size_t pc_end) {
-  Elf64_Shdr *s = SECTIONS.items;
-  for (size_t i = 0; i < SECTIONS.count - 1; i++) {
-    s[i].sh_size = s[i + 1].sh_offset - s[i].sh_offset;
-  }
-  s[SECTIONS.count - 1].sh_size = pc_end - s[SECTIONS.count - 1].sh_offset;
-}
-
-size_t getStrTableSize(const char *table, size_t count) {
-  const char *start = table;
-  size_t i = 1;
-  while (i < count) {
+size_t getStringTableSize(const char *table) {
+  const char *table_s = table;
+  table++;
+  while (*table) {
     table += strlen(table) + 1;
-    i++;
   }
-
-  return table - start;
+  return table - table_s;
 }
 
-void dumpTables(void) {
-  Elf64_Shdr *last = SECTIONS.items + SECTIONS.count - 1;
-  addToShdr(".SYMTAB", SHT_SYMTAB, 0, getEnd(), SECTIONS.count, SYMBOLS.count,
-            8, sizeof(*SYMBOLS.items));
-  last++;
-  last->sh_size = SYMBOLS.count * sizeof(*SYMBOLS.items);
-
-  addToShdr(".STRTAB", SHT_STRTAB, 0, getEnd(), 0, 0, 1, 0);
-  last++;
-  last->sh_size = getStrTableSize(SYMBOLS.strtab, SYMBOLS.count);
-
-  addToShdr(".SHSTRTAB", SHT_STRTAB, 0, getEnd(), 0, 0, 1, 0);
-  last++;
-  last->sh_size = getStrTableSize(SECTIONS.shstrtab, SECTIONS.count);
+size_t getSectionsEnd(void) {
+  return SECTIONS.items[SECTIONS.count - 1].sh_offset +
+         SECTIONS.items[SECTIONS.count - 1].sh_size;
 }
-
-u8 writeTables(FILE *out, size_t pc_end) {
-  backputchSections(pc_end);
-  dumpTables();
-
-  fwrite(SYMBOLS.items, sizeof(*SYMBOLS.items), SYMBOLS.count,
-         out); // write symtable
-
-  fwrite(SYMBOLS.strtab, getStrTableSize(SYMBOLS.strtab, SYMBOLS.count), 1,
-         out);
-  fwrite(SECTIONS.shstrtab, getStrTableSize(SECTIONS.shstrtab, SECTIONS.count),
-         1, out);
-
-  fwrite(SECTIONS.items, sizeof(*SECTIONS.items), SECTIONS.count, out);
-
-  return 1;
-}
-// FIX THIS SHIT
 
 u8 writeHeader(FILE *out) {
-  Elf64_Off e_shoff = getEnd();
+  Elf64_Off e_shoff = getSectionsEnd();
   Elf64_Ehdr h = {{ELFMAG0, ELFMAG1, ELFMAG2, ELFMAG3, ELFCLASS64, ELFDATA2LSB,
                    EV_CURRENT, ELFOSABI_SYSV, 0, 0, 0, 0, 0, 0, 0, EI_NIDENT},
                   ET_REL,
@@ -266,5 +216,59 @@ u8 writeHeader(FILE *out) {
                   SECTIONS.count - 1};
 
   fwrite(&h, sizeof(h), 1, out);
+  return 1;
+}
+
+// all entries in SECTIONS must be backpatched
+u8 writeTables(FILE *out) {
+  size_t symtab_size = sizeof(*SYMBOLS.items) * SYMBOLS.count;
+  size_t strtab_size = getStringTableSize(SYMBOLS.strtab) - 1;
+
+  addToShdr(".SYMTAB", SHT_SYMTAB, 0, getSectionsEnd(), SECTIONS.count + 1,
+            SYMBOLS.count, sizeof(*SYMBOLS.items));
+  SECTIONS.items[SECTIONS.count - 1].sh_size = symtab_size;
+
+  addToShdr(".STRTAB", SHT_STRTAB, 0, getSectionsEnd(), 0, 0, 0);
+  SECTIONS.items[SECTIONS.count - 1].sh_size = strtab_size;
+
+  addToShdr(".SHSTRTAB", SHT_STRTAB, 0, getSectionsEnd(), 0, 0, 0);
+  size_t shstrtab_size = getStringTableSize(SECTIONS.shstrtab);
+  SECTIONS.items[SECTIONS.count - 1].sh_size = shstrtab_size;
+
+  fwrite(SYMBOLS.items, sizeof(*SYMBOLS.items), SYMBOLS.count, out);
+  fwrite(SYMBOLS.strtab, strtab_size, 1, out);
+  fwrite(SECTIONS.shstrtab, shstrtab_size, 1, out);
+  fwrite(SECTIONS.items, sizeof(*SECTIONS.items), SECTIONS.count, out);
+  return 1;
+}
+
+
+// make sures sections .text .data .bss in that specific order
+void sortSections(void) {}
+
+u8 getAllignment(Elf64_Off offset, u64 size) {
+  (void)offset;
+  (void)size;
+  return 1;
+}
+
+// TODO: allignment 
+void backpatch(size_t pc_end) {
+  Elf64_Shdr *s = SECTIONS.items;
+  for (size_t i = 1; i < SECTIONS.count - 1; i++) {
+    s[i].sh_size = s[i + 1].sh_offset - s[i].sh_offset;
+  }
+
+  s[SECTIONS.count - 1].sh_size = pc_end - s[SECTIONS.count - 1].sh_offset;
+}
+
+u8 writeElf(FILE *out, size_t pc_end) {
+  sortSections();
+  SECTIONS.items[1].sh_offset = ELF64_SIZE;
+  backpatch(pc_end);
+  writeTables(out);
+
+  fseek(out, 0, SEEK_SET);
+  writeHeader(out);
   return 1;
 }
