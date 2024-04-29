@@ -31,12 +31,12 @@ typedef struct Flags {
 } Flags;
 
 Flags FLAGS[] = {
-    {'W', SHF_WRITE},      {'A', SHF_ALLOC},
-    {'X', SHF_EXECINSTR},  {'M', SHF_MERGE},
-    {'S', SHF_STRINGS},    {'I', SHF_INFO_LINK},
-    {'L', SHF_LINK_ORDER}, {'O', SHF_OS_NONCONFORMING},
-    {'G', SHF_GROUP},      {'T', SHF_TLS},
-    {'C', SHF_COMPRESSED},
+    {'w', SHF_WRITE},      {'a', SHF_ALLOC},
+    {'x', SHF_EXECINSTR},  {'m', SHF_MERGE},
+    {'s', SHF_STRINGS},    {'i', SHF_INFO_LINK},
+    {'l', SHF_LINK_ORDER}, {'o', SHF_OS_NONCONFORMING},
+    {'g', SHF_GROUP},      {'t', SHF_TLS},
+    {'c', SHF_COMPRESSED},
 };
 
 u8 decodeFlags(const char *flags, u64 *res) {
@@ -75,11 +75,10 @@ u8 dSection(const Fields *f, size_t offset) {
   }
 
   addToShdr(f->fields[1].value, SHT_PROGBITS, flags, offset, 0, 0, 0);
-  addToSym(f->fields[1].value, 0, 0, STT_SECTION);
   return 1;
 }
 
-const char *DIRECTIVES[] = {"GLOBAL", "SECTION"};
+const char *DIRECTIVES[] = {"global", "section"};
 
 i8 searchDirective(const char *name) {
   for (size_t i = 0; i < sizeof(DIRECTIVES) / sizeof(*DIRECTIVES); i++) {

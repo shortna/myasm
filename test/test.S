@@ -2,138 +2,138 @@
 .section .text,"ax"
 
 _start:
-MOVK	X0,0,LSL 0
-MOVK	X0,0,LSL 16
-MOVK	X0,0,LSL 32
-MOVK	X0,0,LSL 48
-MOVN	X0,0,LSL 0
-MOVN	X0,0,LSL 16
-MOVN	X0,0,LSL 32
-MOVN	X0,0,LSL 48
-MOVZ	X0,0,LSL 0
-MOVZ	X0,0,LSL 16
-MOVZ	X0,0,LSL 32
-MOVZ	X0,0,LSL 48
-MOVK	W1,0Xffff
-MOVK	W1,0Xffff,LSL 16
-MOVK	X1,0Xffff,LSL 32
-MOVK	X1,0Xffff,LSL 48
-MOVN	W1,0Xffff
-MOVN	W1,0Xffff,LSL 16
-MOVZ	W1,0XFFFF
-MOVZ	W1,0XFFFF,LSL 0
-MOVZ	W1,0XFFFF,LSL 16
-MOVZ	X1,0XFFFF,LSL 32
-MOVZ	X1,0XFFFF,LSL 48
-ADD	SP,SP,0X123
-ADD	SP,X2,0X123
-ADD	W1,W2,0X123
-ADD	W4,W8,0X123,LSL 12
-ADD	WSP,W2,0X123
-ADD	WSP,WSP,0X123
-ADD	X1,X2,0X123
-ADD	X1,X2,0Xfff
-ADD	X1,X2,0Xfff,LSL 12
-ADD	X1,SP,0X123
-ADDS	W1,WSP,0X123
-ADDS	W8,W16,0X123,LSL 12
-ADDS	X8,X16,0X123,LSL 12
-SUB	SP,SP,0X123
-SUB	SP,X2,0X123
-SUB	W1,W2,0X123
-SUB	W4,W8,0X123,LSL 12
-SUB	WSP,W2,0X123
-SUB	WSP,WSP,0X123
-SUB	X1,X2,0X123
-SUB	X1,X2,0Xfff
-SUB	X1,X2,0Xfff,LSL 12
-SUB	X1,SP,0X123
-SUBS	W1,WSP,0X123
-SUBS	W8,W16,0X123,LSL 12
-SUBS	X8,X16,0X123,LSL 12
-AND	W1,W2,0X0001fe00
-AND	W1,W2,W3
-AND	W1,W2,W3,ASR 4
-AND	W1,W2,W3,LSL 4
-AND	W1,W2,W3,LSR 4
-AND	W1,W2,W3,ROR 4
-AND	WZR,W2,W3,ROR 4
-AND	X1,X2,0X0003fc0000000000
-AND	X1,X2,X3
-AND	X1,X2,X3,LSL 4
-AND	X1,X2,X3,ROR 4
-AND	XZR,X2,X3,ROR 4
-ANDS	W1,W2,0Xfffffff1
-ANDS	W1,W2,W3
-ANDS	W1,W2,W3,LSL 4
-ANDS	W1,W2,W3,ROR 4
-ANDS	X1,X2,0X5555555555555555
-ANDS	X1,X2,X3
-ANDS	X1,X2,X3,LSL 4
-ANDS	X1,X2,X3,ROR 4
-ORN	W1,W2,W3
-ORN	W1,W2,W3,ASR 4
-ORN	W1,W2,W3,LSL 4
-ORN	W1,W2,W3,LSR 4
-ORN	W1,W2,W3,ROR 4
-ORN	X1,X2,X3
-ORN	X1,X2,X3,ASR 4
-ORN	X1,X2,X3,LSL 4
-ORN	X1,X2,X3,LSR 4
-ORN	X1,X2,X3,ROR 4
-ORR	W1,W2,0Xfffffff1
-ORR	W1,W2,W3
-ORR	W1,W2,W3,ASR 4
-ORR	W1,W2,W3,LSL 4
-ORR	W1,W2,W3,LSR 4
-ORR	W1,W2,W3,ROR 4
-ORR	X1,X2,0Xaaaaaaaaaaaaaaaa
-ORR	X1,X2,X3
-ORR	X1,X2,X3,LSL 4
-ORR	X1,X2,X3,ROR 4
-EON	W1,W2,W3
-EON	W1,W2,W3,ASR 4
-EON	W1,W2,W3,LSL 4
-EON	W1,W2,W3,LSR 4
-EON	W1,W2,W3,ROR 4
-EON	WZR,W2,W3,ROR 4
-EON	X1,X2,X3
-EON	X1,X2,X3,LSL 4
-EON	X1,X2,X3,ROR 4
-EON	XZR,X2,X3,ROR 4
-EOR	SP,X2,0Xaaaaaaaaaaaaaaaa
-EOR	W1,W2,0Xfffffff1
-EOR	W1,W2,W3
-EOR	W1,W2,W3,ASR 4
-EOR	W1,W2,W3,LSL 4
-EOR	W1,W2,W3,LSR 4
-EOR	W1,W2,W3,ROR 4
-EOR	WZR,W2,W3,ROR 4
-EOR	X1,X2,0Xfffffffffffffff1
-EOR	X1,X2,X3
-EOR	X1,X2,X3,LSL 4
-EOR	X1,X2,X3,ROR 4
-EOR	XZR,X2,X3,ROR 4
-BIC	W1,W2,W3
-BIC	W1,W2,W3,ASR 4
-BIC	W1,W2,W3,LSL 4
-BIC	W1,W2,W3,LSR 4
-BIC	W1,W2,W3,ROR 4
-BIC	X1,X2,X3
-BIC	X1,X2,X3,LSL 4
-BIC	X1,X2,X3,ROR 4
-BICS	W1,W2,W3
-BICS	W1,W2,W3,LSL 4
-BICS	W1,W2,W3,ROR 4
-BICS	X1,X2,X3
-BICS	X1,X2,X3,LSL 4
-BICS	X1,X2,X3,ROR 4
-SVC	0Xffff
-HVC	0Xffff
-SMC	0Xffff
-BRK	0Xffff
-HLT	0Xffff
-DCPS1	0X0
-DCPS1	0Xffff
-DCPS2	0Xffff
-DCPS3	0Xffff
+movk x0,0,lsl 0
+movk x0,0,lsl 16
+movk x0,0,lsl 32
+movk x0,0,lsl 48
+movn x0,0,lsl 0
+movn x0,0,lsl 16
+movn x0,0,lsl 32
+movn x0,0,lsl 48
+movz x0,0,lsl 0
+movz x0,0,lsl 16
+movz x0,0,lsl 32
+movz x0,0,lsl 48
+movk w1,0xFFFF
+movk w1,0xFFFF,lsl 16
+movk x1,0xFFFF,lsl 32
+movk x1,0xFFFF,lsl 48
+movn w1,0xFFFF
+movn w1,0xFFFF,lsl 16
+movz w1,0xffff
+movz w1,0xffff,lsl 0
+movz w1,0xffff,lsl 16
+movz x1,0xffff,lsl 32
+movz x1,0xffff,lsl 48
+add	sp,sp,0x123
+add	sp,x2,0x123
+add	w1,w2,0x123
+add	w4,w8,0x123,lsl 12
+add	wsp,w2,0x123
+add	wsp,wsp,0x123
+add	x1,x2,0x123
+add	x1,x2,0xFFF
+add	x1,x2,0xFFF,lsl 12
+add	x1,sp,0x123
+adds	w1,wsp,0x123
+adds	w8,w16,0x123,lsl 12
+adds	x8,x16,0x123,lsl 12
+sub	sp,sp,0x123
+sub	sp,x2,0x123
+sub	w1,w2,0x123
+sub	w4,w8,0x123,lsl 12
+sub	wsp,w2,0x123
+sub	wsp,wsp,0x123
+sub	x1,x2,0x123
+sub	x1,x2,0xFFF
+sub	x1,x2,0xFFF,lsl 12
+sub	x1,sp,0x123
+subs	w1,wsp,0x123
+subs	w8,w16,0x123,lsl 12
+subs	x8,x16,0x123,lsl 12
+and	w1,w2,0x0001FE00
+and	w1,w2,w3
+and	w1,w2,w3,asr 4
+and	w1,w2,w3,lsl 4
+and	w1,w2,w3,lsr 4
+and	w1,w2,w3,ror 4
+and	wzr,w2,w3,ror 4
+and	x1,x2,0x0003FC0000000000
+and	x1,x2,x3
+and	x1,x2,x3,lsl 4
+and	x1,x2,x3,ror 4
+and	xzr,x2,x3,ror 4
+ands	w1,w2,0xFFFFFFF1
+ands	w1,w2,w3
+ands	w1,w2,w3,lsl 4
+ands	w1,w2,w3,ror 4
+ands	x1,x2,0x5555555555555555
+ands	x1,x2,x3
+ands	x1,x2,x3,lsl 4
+ands	x1,x2,x3,ror 4
+orn	w1,w2,w3
+orn	w1,w2,w3,asr 4
+orn	w1,w2,w3,lsl 4
+orn	w1,w2,w3,lsr 4
+orn	w1,w2,w3,ror 4
+orn	x1,x2,x3
+orn	x1,x2,x3,asr 4
+orn	x1,x2,x3,lsl 4
+orn	x1,x2,x3,lsr 4
+orn	x1,x2,x3,ror 4
+orr	w1,w2,0xFFFFFFF1
+orr	w1,w2,w3
+orr	w1,w2,w3,asr 4
+orr	w1,w2,w3,lsl 4
+orr	w1,w2,w3,lsr 4
+orr	w1,w2,w3,ror 4
+orr	x1,x2,0xAAAAAAAAAAAAAAAA
+orr	x1,x2,x3
+orr	x1,x2,x3,lsl 4
+orr	x1,x2,x3,ror 4
+eon	w1,w2,w3
+eon	w1,w2,w3,asr 4
+eon	w1,w2,w3,lsl 4
+eon	w1,w2,w3,lsr 4
+eon	w1,w2,w3,ror 4
+eon	wzr,w2,w3,ror 4
+eon	x1,x2,x3
+eon	x1,x2,x3,lsl 4
+eon	x1,x2,x3,ror 4
+eon	xzr,x2,x3,ror 4
+eor	sp,x2,0xAAAAAAAAAAAAAAAA
+eor	w1,w2,0xFFFFFFF1
+eor	w1,w2,w3
+eor	w1,w2,w3,asr 4
+eor	w1,w2,w3,lsl 4
+eor	w1,w2,w3,lsr 4
+eor	w1,w2,w3,ror 4
+eor	wzr,w2,w3,ror 4
+eor	x1,x2,0xFFFFFFFFFFFFFFF1
+eor	x1,x2,x3
+eor	x1,x2,x3,lsl 4
+eor	x1,x2,x3,ror 4
+eor	xzr,x2,x3,ror 4
+bic	w1,w2,w3
+bic	w1,w2,w3,asr 4
+bic	w1,w2,w3,lsl 4
+bic	w1,w2,w3,lsr 4
+bic	w1,w2,w3,ror 4
+bic	x1,x2,x3
+bic	x1,x2,x3,lsl 4
+bic	x1,x2,x3,ror 4
+bics	w1,w2,w3
+bics	w1,w2,w3,lsl 4
+bics	w1,w2,w3,ror 4
+bics	x1,x2,x3
+bics	x1,x2,x3,lsl 4
+bics	x1,x2,x3,ror 4
+svc	0xFFFF
+hvc	0xFFFF
+smc	0xFFFF
+brk	0xFFFF
+hlt	0xFFFF
+dcps1	0x0
+dcps1	0xFFFF
+dcps2	0xFFFF
+dcps3	0xFFFF

@@ -16,16 +16,16 @@
 // IMPORTANT
 // instruction mnemonic MUST be in order of incresing opc field
 static const Instruction INSTRUCTIONS[] = {
-    {{"ADR", "ADRP"}, PCRELADDRESSING, {2, REGISTER, LABEL}},
-    {{"MOVN", "MOVZ", "MOVK"}, MOVEWIDE, {3, REGISTER, IMMEDIATE, SHIFT | OPTIONAL}},
+    {{"adr", "adrp"}, PCRELADDRESSING, {2, REGISTER, LABEL}},
+    {{"movn", "movz", "movk"}, MOVEWIDE, {3, REGISTER, IMMEDIATE, SHIFT | OPTIONAL}},
 
-    {{"ADD", "SUB"}, ADDSUB_IMM, {4, REGISTER | SP, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
-    {{"ADDS", "SUBS"}, ADDSUB_IMM, {4, REGISTER, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
+    {{"add", "sub"}, ADDSUB_IMM, {4, REGISTER | SP, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
+    {{"adds", "subs"}, ADDSUB_IMM, {4, REGISTER, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
 
-    {{"AND", "ORR", "EOR", "ANDS"}, LOGICAL_IMM, {3, REGISTER | SP, REGISTER, IMMEDIATE}},
-    {{"AND", "BIC", "ORR", "ORN", "EOR", "EON", "ANDS", "BICS"}, LOGICAL_SH_REG, {4, REGISTER, REGISTER, REGISTER, SHIFT | OPTIONAL}},
-    {{"SVC", "HVC", "SMC", "BRK", "HLT", "TCANCEL"}, EXCEPTION, {1, IMMEDIATE}},
-    {{"DCPS1", "DCPS2", "DCPS3"}, EXCEPTION, {1, IMMEDIATE | OPTIONAL}},
+    {{"and", "orr", "eor", "ands"}, LOGICAL_IMM, {3, REGISTER | SP, REGISTER, IMMEDIATE}},
+    {{"and", "bic", "orr", "orn", "eor", "eon", "ands", "bics"}, LOGICAL_SH_REG, {4, REGISTER, REGISTER, REGISTER, SHIFT | OPTIONAL}},
+    {{"svc", "hvc", "smc", "brk", "hlt", "tcancel"}, EXCEPTION, {1, IMMEDIATE}},
+    {{"dcps1", "dcps2", "dcps3"}, EXCEPTION, {1, IMMEDIATE | OPTIONAL}},
 };
 
 u8 searchMnemonic(const char *mnemonic) {
@@ -118,7 +118,6 @@ bool encodeBitmaskImmediate(u64 imm, u64 *encoding, bool extended) {
   // Encode in Immr the number of RORs it would take to get *from* 0^m 1^n
   // to our target value, where I is the number of RORs to go the opposite
   // direction.
-  assert(size > ctz && "I should be smaller than element size");
   u32 immr = (size - ctz) & (size - 1);
 
   // If size has a 1 in the n'th bit, create a value that has zeroes in
@@ -417,7 +416,7 @@ u32 assembleException(Fields *instruction) {
     // 101  10  DCPS2
     // 101  11  DCPS3
     // do not process DCPS* instructions since the already set
-    if (*instruction->fields[0].value != 'D') {
+    if (*instruction->fields[0].value != 'd') {
       // opc  LL  mnemonic
       // 000  01  SVC
       // 000  10  HVC
@@ -485,7 +484,7 @@ Signature decodeTokens(const Fields *instruction) {
       Register r;
       parseRegister(instruction->fields[i].value, &r);
       if (r.n == REGISTER_ZR_SP) {
-        if (strcmp(instruction->fields[i].value + 1, "ZR") != 0) {
+        if (strcmp(instruction->fields[i].value + 1, "zr") != 0) {
           s_arr[i] = SP;
           break;
         }

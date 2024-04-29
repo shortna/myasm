@@ -67,8 +67,7 @@ u8 getToken(FILE *f, Token *t) {
 
   char ch;
   size_t i = 0;
-  // you cant use upper case for labels
-  while ((ch = toupper(getc(SRC))) != EOF) {
+  while ((ch = tolower(getc(SRC))) != EOF) {
     switch (ch) {
     case '\n':
       LINE++;

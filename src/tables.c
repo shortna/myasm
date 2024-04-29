@@ -30,8 +30,8 @@ void initSymbolTable(void) {
 
   SYMBOLS.count = 0;
   SYMBOLS.capacity = TALBE_START_SIZE;
-
   addToSym("", 0, 0, 0);
+  SYMBOLS.items[0].st_name = 0;
 }
 
 void initShdrTable(void) {
@@ -42,6 +42,7 @@ void initShdrTable(void) {
   SECTIONS.count = 0;
   SECTIONS.capacity = TALBE_START_SIZE;
   addToShdr("", SHT_NULL, 0, 0, 0, 0, 0);
+  SECTIONS.items[0].sh_name = 0;
 }
 
 void freeSymoblTable(void) {
@@ -125,6 +126,8 @@ u8 concatStrs(char *table, const char *s, size_t count) {
   return 1;
 }
 
+size_t getStringTableSize(const char *table);
+
 u8 addToSym(const char *name, Elf64_Addr st_value, u64 st_size, u8 st_info) {
   ssize_t res = searchInSym(name);
   if (res != -1) {
@@ -134,14 +137,14 @@ u8 addToSym(const char *name, Elf64_Addr st_value, u64 st_size, u8 st_info) {
   if (SYMBOLS.count == SYMBOLS.capacity + 1) {
     resizeSymTable();
   }
-  concatStrs(SYMBOLS.strtab, name, SYMBOLS.count);
   Elf64_Sym *item = SYMBOLS.items + SYMBOLS.count;
-  item->st_name = SYMBOLS.count;
+  item->st_name = getStringTableSize(SYMBOLS.strtab);
   item->st_value = st_value;
   item->st_size = st_size;
   item->st_info = ELF64_ST_INFO(STB_LOCAL, st_info);
   item->st_other = STV_DEFAULT;
-  item->st_shndx = SECTIONS.count - 1;
+  item->st_shndx = 0;
+  concatStrs(SYMBOLS.strtab, name, SYMBOLS.count);
   SYMBOLS.count++;
   return 1;
 }
@@ -157,9 +160,8 @@ u8 addToShdr(const char *name, u32 sh_type, u64 sh_flags, Elf64_Off sh_offset,
   if (SECTIONS.count == SECTIONS.capacity) {
     resizeShdrTable();
   }
-  concatStrs(SECTIONS.shstrtab, name, SECTIONS.count);
   Elf64_Shdr *item = SECTIONS.items + SECTIONS.count;
-  item->sh_name = SECTIONS.count;
+  item->sh_name = getStringTableSize(SECTIONS.shstrtab);
   item->sh_type = sh_type;
   item->sh_flags = sh_flags;
   item->sh_addr = 0;
@@ -169,6 +171,7 @@ u8 addToShdr(const char *name, u32 sh_type, u64 sh_flags, Elf64_Off sh_offset,
   item->sh_info = sh_info;
   item->sh_addralign = 0;
   item->sh_entsize = sh_entsize;
+  concatStrs(SECTIONS.shstrtab, name, SECTIONS.count);
   SECTIONS.count++;
   return 1;
 }
@@ -219,19 +222,30 @@ u8 writeHeader(FILE *out) {
   return 1;
 }
 
+size_t getLastNonGlobal(void) {
+  size_t ind = 0;
+  for (size_t i = 0; i < SYMBOLS.count; i++) {
+    if ((SYMBOLS.items[i].st_info & (STB_GLOBAL << 4)) == 0) {
+      ind = i;
+    }
+  }
+  return ind;
+}
+
 // all entries in SECTIONS must be backpatched
 u8 writeTables(FILE *out) {
   size_t symtab_size = sizeof(*SYMBOLS.items) * SYMBOLS.count;
-  size_t strtab_size = getStringTableSize(SYMBOLS.strtab) - 1;
+  size_t strtab_size = getStringTableSize(SYMBOLS.strtab);
+  size_t sh_info = getLastNonGlobal() + 1;
 
-  addToShdr(".SYMTAB", SHT_SYMTAB, 0, getSectionsEnd(), SECTIONS.count + 1,
-            SYMBOLS.count, sizeof(*SYMBOLS.items));
+  addToShdr(".symtab", SHT_SYMTAB, 0, getSectionsEnd(), SECTIONS.count + 1,
+            sh_info, sizeof(*SYMBOLS.items));
   SECTIONS.items[SECTIONS.count - 1].sh_size = symtab_size;
 
-  addToShdr(".STRTAB", SHT_STRTAB, 0, getSectionsEnd(), 0, 0, 0);
+  addToShdr(".strtab", SHT_STRTAB, 0, getSectionsEnd(), 0, 0, 0);
   SECTIONS.items[SECTIONS.count - 1].sh_size = strtab_size;
 
-  addToShdr(".SHSTRTAB", SHT_STRTAB, 0, getSectionsEnd(), 0, 0, 0);
+  addToShdr(".shstrtab", SHT_STRTAB, 0, getSectionsEnd(), 0, 0, 0);
   size_t shstrtab_size = getStringTableSize(SECTIONS.shstrtab);
   SECTIONS.items[SECTIONS.count - 1].sh_size = shstrtab_size;
 
@@ -242,9 +256,8 @@ u8 writeTables(FILE *out) {
   return 1;
 }
 
-
 // make sures sections .text .data .bss in that specific order
-void sortSections(void) {}
+void sortSections(void) { SECTIONS.items[1].sh_offset = ELF64_SIZE; }
 
 u8 getAllignment(Elf64_Off offset, u64 size) {
   (void)offset;
@@ -252,19 +265,19 @@ u8 getAllignment(Elf64_Off offset, u64 size) {
   return 1;
 }
 
-// TODO: allignment 
+// TODO: allignment and indexes of symtab
 void backpatch(size_t pc_end) {
   Elf64_Shdr *s = SECTIONS.items;
   for (size_t i = 1; i < SECTIONS.count - 1; i++) {
     s[i].sh_size = s[i + 1].sh_offset - s[i].sh_offset;
   }
 
-  s[SECTIONS.count - 1].sh_size = pc_end - s[SECTIONS.count - 1].sh_offset;
+  s[SECTIONS.count - 1].sh_size =
+      pc_end - s[SECTIONS.count - 1].sh_offset + ELF64_SIZE;
 }
 
 u8 writeElf(FILE *out, size_t pc_end) {
   sortSections();
-  SECTIONS.items[1].sh_offset = ELF64_SIZE;
   backpatch(pc_end);
   writeTables(out);
 

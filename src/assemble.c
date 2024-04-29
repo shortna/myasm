@@ -59,6 +59,8 @@ u8 collectLineOfTokens(FILE *src, Fields *f) {
 }
 
 u8 writeData(FILE *ir_file, FILE *out) {
+  (void)ir_file;
+  (void)out;
   return 1;
 }
 
@@ -82,7 +84,7 @@ u8 makeAssemble(FILE *src, FILE *out) {
         // error here
         break;
       }
-      fwrite(&instruction, sizeof(instruction), 1, ir_file);
+      fwrite(&instruction, sizeof(instruction), 1, out);
       pc += ARM_INSTRUCTION_SIZE;
       break;
     }
@@ -103,7 +105,7 @@ u8 makeAssemble(FILE *src, FILE *out) {
   // }
 
   writeElf(out, pc);
-  writeData(ir_file, out);
+  //  writeData(ir_file, out);
 
   fclose(ir_file);
   freeFields(&f);
