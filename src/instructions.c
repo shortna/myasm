@@ -446,8 +446,8 @@ u32 assembleException(Fields *instruction) {
 
 u8 compareSignatures(const Signature *s1, const Signature *s2) {
   u8 i = 0;
-  int *s1_arr = ((int *)s1) + 1;
-  int *s2_arr = ((int *)s2) + 1;
+  u8 *s1_arr = ((u8 *)s1) + 1;
+  u8 *s2_arr = ((u8 *)s2) + 1;
   while (i < s1->n_args) {
     // if args differs from what expected and optional not set
     if ((s1_arr[i] & s2_arr[i]) == 0 && !(s1_arr[i] & OPTIONAL)) {
@@ -476,7 +476,7 @@ InstructionType getInstructionType(const char *mnemonic, Signature *s) {
 
 Signature decodeTokens(const Fields *instruction) {
   Signature s = {0};
-  int *s_arr = ((int *)&s);
+  u8 *s_arr = ((u8 *)&s);
 
   for (u8 i = 1; i < instruction->n_fields; i++) {
     switch (instruction->fields[i].type) {

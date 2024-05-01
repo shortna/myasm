@@ -1,4 +1,5 @@
 #include "tables.h"
+#include "instructions_api.h"
 #include "types.h"
 #include <elf.h>
 #include <stdio.h>
@@ -232,6 +233,18 @@ size_t getLastNonGlobal(void) {
   return ind;
 }
 
+void align(void) {
+  for (size_t i = 1; i < SECTIONS.count; i++) {
+    if ((SECTIONS.items[i].sh_type & 0xf) == SHT_PROGBITS) {
+      SECTIONS.items[i].sh_addralign = ARM_INSTRUCTION_SIZE;
+    } else if ((SECTIONS.items[i].sh_type & 0xf) == SHT_SYMTAB) {
+      SECTIONS.items[i].sh_addralign = 8;
+    } else {
+      SECTIONS.items[i].sh_addralign = 1;
+    }
+  }
+}
+
 // all entries in SECTIONS must be backpatched
 u8 writeTables(FILE *out) {
   size_t symtab_size = sizeof(*SYMBOLS.items) * SYMBOLS.count;
@@ -249,6 +262,8 @@ u8 writeTables(FILE *out) {
   size_t shstrtab_size = getStringTableSize(SECTIONS.shstrtab);
   SECTIONS.items[SECTIONS.count - 1].sh_size = shstrtab_size;
 
+  align();
+
   fwrite(SYMBOLS.items, sizeof(*SYMBOLS.items), SYMBOLS.count, out);
   fwrite(SYMBOLS.strtab, strtab_size, 1, out);
   fwrite(SECTIONS.shstrtab, shstrtab_size, 1, out);
@@ -256,27 +271,78 @@ u8 writeTables(FILE *out) {
   return 1;
 }
 
-// make sures sections .text .data .bss in that specific order
-void sortSections(void) { SECTIONS.items[1].sh_offset = ELF64_SIZE; }
+// remove duplicates and sort
+u8 removeDuplicates(void) {
+  Elf64_Shdr *items = SECTIONS.items;
+  for (size_t i = 1; i < SECTIONS.count - 1; i++) {
+    for (size_t j = i + 1; j < SECTIONS.count; j++) {
+      if (items[i].sh_name == items[j].sh_name) {
+        if (items[i].sh_flags != items[j].sh_flags) {
+          // error here
+          return 0;
+        }
+        // add size of second section to first section
+        items[i].sh_size += items[j].sh_size;
+        // move section after first section
+        items[i + 1].sh_offset += items[j].sh_size;
 
-u8 getAllignment(Elf64_Off offset, u64 size) {
-  (void)offset;
-  (void)size;
+        // remove duplicate
+        for (size_t k = j; k < SECTIONS.count - 1; k++) {
+          memmove(items + k, items + k + 1, sizeof(*items));
+        }
+        SECTIONS.count--;
+      }
+    }
+  }
+
   return 1;
 }
 
-// TODO: allignment and indexes of symtab
-void backpatch(size_t pc_end) {
-  Elf64_Shdr *s = SECTIONS.items;
-  for (size_t i = 1; i < SECTIONS.count - 1; i++) {
-    s[i].sh_size = s[i + 1].sh_offset - s[i].sh_offset;
+void sortSections(void) {
+  Elf64_Shdr *items = SECTIONS.items;
+  ssize_t order[] = {searchInShdr(".text"), searchInShdr(".data"),
+                     searchInShdr(".bss")};
+
+  u8 cur = 1;
+  for (size_t i = 0; i < sizeof(order) / sizeof(*order); i++) {
+    if (order[i] != -1) {
+      Elf64_Shdr tmp = items[cur];
+      items[cur] = items[order[i]];
+      items[order[i]] = tmp;
+      cur++;
+    }
   }
 
-  s[SECTIONS.count - 1].sh_size =
-      pc_end - s[SECTIONS.count - 1].sh_offset + ELF64_SIZE;
+  SECTIONS.items[1].sh_offset = ELF64_SIZE;
+}
+
+void backpatch(size_t pc_end) {
+  Elf64_Shdr *section = SECTIONS.items;
+  for (size_t i = 1; i < SECTIONS.count - 1; i++) {
+    section[i].sh_size = section[i + 1].sh_offset - section[i].sh_offset;
+  }
+
+  section[SECTIONS.count - 1].sh_size =
+      pc_end - section[SECTIONS.count - 1].sh_offset + ELF64_SIZE;
+
+  Elf64_Sym *symbol = SYMBOLS.items;
+  for (size_t i = 1; i < SECTIONS.count; i++) {
+    for (size_t j = 1; j < SYMBOLS.count; j++) {
+      if (symbol[j].st_value + ELF64_SIZE <= section[i].sh_offset) {
+        symbol[j].st_shndx = i;
+      }
+    }
+  }
 }
 
 u8 writeElf(FILE *out, size_t pc_end) {
+  if (SECTIONS.count == 1) { // if no section default to .text
+    addToShdr(".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, 0, 0, 0, 0);
+  }
+
+  if (!removeDuplicates()) {
+    return 0;
+  }
   sortSections();
   backpatch(pc_end);
   writeTables(out);

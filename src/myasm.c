@@ -16,9 +16,7 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  if (!make(src, NULL)) {
-    // printErrors();
-  }
+  make(src, NULL);
   fclose(src);
   return EXIT_SUCCESS;
 }

@@ -104,7 +104,10 @@ u8 makeAssemble(FILE *src, FILE *out) {
   // return 0;
   // }
 
-  writeElf(out, pc);
+  if (!writeElf(out, pc)) {
+    // print err
+    return 0;
+  }
   //  writeData(ir_file, out);
 
   fclose(ir_file);
@@ -128,12 +131,18 @@ u8 make(FILE *src, char *out_name) {
     return 0;
   }
 
-  u8 ret = 1;
-  makeLabels(src);
+  if (!makeLabels(src)) {
+    goto err;
+  }
   fseek(src, 0, SEEK_SET);
 
-  makeAssemble(src, out);
-  fclose(out);
+  if (!makeAssemble(src, out)) {
+    goto err;
+  }
 
-  return ret;
+  return 1;
+
+err:
+  fclose(out);
+  return 0;
 }

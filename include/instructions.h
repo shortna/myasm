@@ -72,18 +72,18 @@ typedef enum {
   SHIFT = 16,
   EXTEND = 32,
   BRACKETS = 64,
-  OPTIONAL = 1024,
+  OPTIONAL = 128,
 } Argument;
 
 typedef struct Signature {
   int n_args;
-  Argument a1;
-  Argument a2;
-  Argument a3;
-  Argument a4;
-  Argument a5;
-  Argument a6;
-  Argument a7;
+  u8 a1;
+  u8 a2;
+  u8 a3;
+  u8 a4;
+  u8 a5;
+  u8 a6;
+  u8 a7;
 } Signature;
 
 typedef enum InstructionType {

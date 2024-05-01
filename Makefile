@@ -1,7 +1,7 @@
 SHELL=/bin/bash
 
 SRC_DIR := src
-INCLUDE_DIR := $(SRC_DIR)/include
+INCLUDE_DIR := include
 
 TARGET_DIR := build
 TARGET := myasm

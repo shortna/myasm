@@ -64,11 +64,6 @@ u8 dSection(const Fields *f, size_t offset) {
     return 0;
   }
 
-  if (searchInShdr(f->fields[1].value) != -1) {
-    // error here
-    return 0;
-  }
-
   u64 flags;
   if (!decodeFlags(f->fields[2].value, &flags)) {
     return 0;
