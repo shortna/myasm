@@ -1,8 +1,9 @@
 .global _start
 .section .text,"ax"
 
-_start:
-movk x0,0,lsl 0
+// comment
+_start: // commet
+  movk x0,0,lsl 0
 movk x0,0,lsl 16
 movk x0,0,lsl 32
 movk x0,0,lsl 48

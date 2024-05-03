@@ -1,5 +1,5 @@
 #include "tables.h"
-#include "instructions_api.h"
+#include "instructions.h"
 #include "types.h"
 #include <elf.h>
 #include <stdio.h>

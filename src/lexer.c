@@ -1,6 +1,6 @@
 #include "lexer.h"
 #include "directives.h"
-#include "instructions_api.h"
+#include "instructions.h"
 #include "parser.h"
 #include "types.h"
 #include <ctype.h>
@@ -99,11 +99,11 @@ u8 getToken(FILE *f, Token *t) {
       i++;
       goto done;
     default:
-      if (i == t->capacity) {
-        goto done;
-      }
       t->value[i] = ch;
       i++;
+      if (i == t->capacity - 1) {
+        goto done;
+      }
       break;
     }
   }

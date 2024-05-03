@@ -7,6 +7,6 @@
 struct _IO_FILE;
 typedef struct _IO_FILE FILE;
 
-u8 make(FILE *src, char *out_name);
+u8 make(FILE *src, const char *out_name);
 
 #endif

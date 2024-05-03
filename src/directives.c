@@ -1,5 +1,5 @@
 #include "directives.h"
-#include "instructions_api.h"
+#include "instructions.h"
 #include "tables.h"
 #include "types.h"
 #include <elf.h>

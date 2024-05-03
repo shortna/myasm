@@ -1,6 +1,6 @@
 #include "assemble.h"
 #include "directives.h"
-#include "instructions_api.h"
+#include "instructions.h"
 #include "lexer.h"
 #include "tables.h"
 #include "types.h"
@@ -27,8 +27,10 @@ u8 makeLabels(FILE *src) {
         // error here
         ret = 0;
       }
+      break;
     case T_INSTRUCTION:
       pc += ARM_INSTRUCTION_SIZE;
+      break;
     default:
       (void)NULL;
     }
@@ -117,11 +119,11 @@ u8 makeAssemble(FILE *src, FILE *out) {
   return 1;
 }
 
-u8 make(FILE *src, char *out_name) {
+u8 make(FILE *src, const char *out_name) {
   FILE *out = NULL;
   if (!out_name) {
     out_name = alloca(8);
-    strcpy(out_name, "a.out");
+    strcpy((char *)out_name, "a.out");
   }
 
   out = fopen(out_name, "wb");
