@@ -1,5 +1,5 @@
-// .global _start
-// .section .text,"ax"
+.global _start
+.section .text,"ax"
 // comment
 _start: // comment
   MOVZ X8, #93 // MOV X8, #93

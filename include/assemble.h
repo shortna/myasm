@@ -3,10 +3,6 @@
 
 #include "myasm.h"
 
-// forward declaration
-struct _IO_FILE;
-typedef struct _IO_FILE FILE;
-
-u8 make(FILE *src, const char *out_name);
+u8 make(u8 n_sources, const char **sources, const char *out_name);
 
 #endif

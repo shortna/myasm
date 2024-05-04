@@ -1,9 +1,6 @@
-.global _start
 .section .text,"ax"
 
-// comment
-_start: // commet
-  movk x0,0,lsl 0
+movk x0,0,lsl 0
 movk x0,0,lsl 16
 movk x0,0,lsl 32
 movk x0,0,lsl 48
@@ -72,69 +69,3 @@ ands	x1,x2,0x5555555555555555
 ands	x1,x2,x3
 ands	x1,x2,x3,lsl 4
 ands	x1,x2,x3,ror 4
-orn	w1,w2,w3
-orn	w1,w2,w3,asr 4
-orn	w1,w2,w3,lsl 4
-orn	w1,w2,w3,lsr 4
-orn	w1,w2,w3,ror 4
-orn	x1,x2,x3
-orn	x1,x2,x3,asr 4
-orn	x1,x2,x3,lsl 4
-orn	x1,x2,x3,lsr 4
-orn	x1,x2,x3,ror 4
-orr	w1,w2,0xFFFFFFF1
-orr	w1,w2,w3
-orr	w1,w2,w3,asr 4
-orr	w1,w2,w3,lsl 4
-orr	w1,w2,w3,lsr 4
-orr	w1,w2,w3,ror 4
-orr	x1,x2,0xAAAAAAAAAAAAAAAA
-orr	x1,x2,x3
-orr	x1,x2,x3,lsl 4
-orr	x1,x2,x3,ror 4
-eon	w1,w2,w3
-eon	w1,w2,w3,asr 4
-eon	w1,w2,w3,lsl 4
-eon	w1,w2,w3,lsr 4
-eon	w1,w2,w3,ror 4
-eon	wzr,w2,w3,ror 4
-eon	x1,x2,x3
-eon	x1,x2,x3,lsl 4
-eon	x1,x2,x3,ror 4
-eon	xzr,x2,x3,ror 4
-eor	sp,x2,0xAAAAAAAAAAAAAAAA
-eor	w1,w2,0xFFFFFFF1
-eor	w1,w2,w3
-eor	w1,w2,w3,asr 4
-eor	w1,w2,w3,lsl 4
-eor	w1,w2,w3,lsr 4
-eor	w1,w2,w3,ror 4
-eor	wzr,w2,w3,ror 4
-eor	x1,x2,0xFFFFFFFFFFFFFFF1
-eor	x1,x2,x3
-eor	x1,x2,x3,lsl 4
-eor	x1,x2,x3,ror 4
-eor	xzr,x2,x3,ror 4
-bic	w1,w2,w3
-bic	w1,w2,w3,asr 4
-bic	w1,w2,w3,lsl 4
-bic	w1,w2,w3,lsr 4
-bic	w1,w2,w3,ror 4
-bic	x1,x2,x3
-bic	x1,x2,x3,lsl 4
-bic	x1,x2,x3,ror 4
-bics	w1,w2,w3
-bics	w1,w2,w3,lsl 4
-bics	w1,w2,w3,ror 4
-bics	x1,x2,x3
-bics	x1,x2,x3,lsl 4
-bics	x1,x2,x3,ror 4
-svc	0xFFFF
-hvc	0xFFFF
-smc	0xFFFF
-brk	0xFFFF
-hlt	0xFFFF
-dcps1	0x0
-dcps1	0xFFFF
-dcps2	0xFFFF
-dcps3	0xFFFF

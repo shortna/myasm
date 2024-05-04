@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
+#define MAX_NUMBER_FILES (20)
 
 static const struct option LONG_OPTIONS[] = {
     {"o", required_argument, NULL, 'o'},
@@ -13,30 +16,43 @@ static const struct option LONG_OPTIONS[] = {
 int main(int argc, char **argv) {
   if (argc == 1) {
     fprintf(stderr, "Please, provide source file");
-    return EXIT_SUCCESS;
+    return EXIT_FAILURE;
   }
 
-  FILE *src = fopen(argv[1], "rb");
-  if (!src) {
-    fprintf(stderr, "Failed to open \"%s\" file. Error: %s\n", argv[1],
-            strerror(errno));
-    exit(EXIT_FAILURE);
-  }
-
-  int opt = 0;
+  char opt = 0;
   const char *out_name = NULL;
-  while ((opt = getopt_long(argc, argv, "o", LONG_OPTIONS, NULL)) != -1) {
+  while ((opt = getopt_long(argc, argv, "o:", LONG_OPTIONS, NULL)) != -1) {
     switch (opt) {
     case 'o':
       out_name = optarg;
       break;
+    case '?':
+      return EXIT_FAILURE;
     default:
       (void)NULL;
     }
   }
 
-  make(src, out_name);
-  fclose(src);
+  const char *sources[MAX_NUMBER_FILES];
+  u8 n_sources = 0;
+  for (int i = 1; i < argc; i++) {
+    if (access(argv[i], F_OK) == 0) {
+      if (!out_name || strcmp(out_name, argv[i]) != 0) {
+        sources[n_sources] = argv[i];
+        n_sources++;
+      }
+    }
+  }
+
+  if (n_sources == 0) {
+    fprintf(stderr, "Please, provide source file");
+    return EXIT_FAILURE;
+  }
+
+  if (!make(n_sources, sources, out_name)) {
+    return EXIT_FAILURE;
+  }
+
   return EXIT_SUCCESS;
 }
 

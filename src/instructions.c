@@ -207,17 +207,17 @@ u32 assembleLogicalShReg(Fields *instruction) {
   }
 
   ShiftType t = SH_LSL;
-  u8 imm = 0;
+  u8 sh_imm = 0;
   if (instruction->n_fields == 6) {
     if (!parseShift(instruction->fields[4].value, &t)) {
       // error here
       return 0;
     }
-    if (!parseImmediateU8(instruction->fields[5].value, &imm)) {
+    if (!parseImmediateU8(instruction->fields[5].value, &sh_imm)) {
       // error here
       return 0;
     }
-    if (imm >= (sf ? 64 : 32)) {
+    if (sh_imm >= (sf ? 64 : 32)) {
       // error here
       return 0;
     }
@@ -240,7 +240,7 @@ u32 assembleLogicalShReg(Fields *instruction) {
   assembled_instruction |= ((u32)sf << 31) | ((u32)opc << 29) |
                            ((u32)SOP_LOGICAL_SH_REG << 24) | ((u32)t << 22) |
                            ((u32)N << 21) | ((u32)Rm.n << 16) |
-                           ((u32)imm << 10) | ((u32)Rn.n << 5) | Rd.n;
+                           ((u32)sh_imm << 10) | ((u32)Rn.n << 5) | Rd.n;
 
   return assembled_instruction;
 }
@@ -280,10 +280,10 @@ u32 assembleMoveWide(Fields *instruction) {
       return 0;
     }
 
-    if (sf && (imm > 48 || imm % 16 != 0)) {
+    if (sf && (sh_imm > 48 || sh_imm % 16 != 0)) {
       // error here
       return 0;
-    } else if (!sf && imm != 0 && imm != 16) {
+    } else if (!sf && sh_imm != 0 && sh_imm != 16) {
       // error here
       return 0;
     }
@@ -294,11 +294,11 @@ u32 assembleMoveWide(Fields *instruction) {
     opc += 1;
   }
 
-  u8 hw = imm / 16;
+  u8 hw = sh_imm / 16;
 
-  assembled_instruction |= ((u32)sf << 31u) | ((u32)opc << 29u) |
-                           ((u32)SOP_MOVE_WIDE << 23u) | ((u32)hw << 21u) |
-                           ((u32)imm << 5u) | Rd.n;
+  assembled_instruction |= ((u32)sf << 31) | ((u32)opc << 29) |
+                           ((u32)SOP_MOVE_WIDE << 23) | ((u32)hw << 21) |
+                           ((u32)imm << 5) | Rd.n;
 
   return assembled_instruction;
 }
@@ -365,10 +365,10 @@ u32 assembleAddSubImm(Fields *instruction) {
 
   bool sh = sh_imm == 12;
 
-  assembled_instruction |= ((u32)sf << 31u) | ((u32)op << 30u) |
-                           ((u32)S << 29u) | ((u32)SOP_ADD_SUB_IMM << 23u) |
-                           ((u32)sh << 22u) | ((u32)imm << 10u) |
-                           ((u32)Rn.n << 5u) | Rd.n;
+  assembled_instruction |= ((u32)sf << 31) | ((u32)op << 30) |
+                           ((u32)S << 29) | ((u32)SOP_ADD_SUB_IMM << 23) |
+                           ((u32)sh << 22) | ((u32)imm << 10) |
+                           ((u32)Rn.n << 5) | Rd.n;
 
   return assembled_instruction;
 }

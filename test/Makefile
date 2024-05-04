@@ -1,6 +1,6 @@
 SHELL=/bin/bash
 
-TEST_FILE := test.S
+TEST_FILE := a.S
 
 OBJCOPY := aarch64-linux-gnu-objcopy
 AS := aarch64-linux-gnu-as
@@ -9,12 +9,13 @@ MYASM := ../build/myasm
 OUT_MINE := text_mine
 OUT_TEST := text_test
 
-.PHONY: all clean assemble_with_mine assemble_with_test test distclean
+.PHONY: all clean assemble_with_mine assemble_with_test test
 all: test
 
 .SILENT: assemble_with_mine assemble_with_test
 
 assemble_with_mine: $(TEST_FILE)
+	make -C .. --no-print-directory 2> /dev/null
 	$(MYASM) $^ -o $@
 	$(OBJCOPY) -O binary --only-section=.text $@ $(OUT_MINE)
 	rm $@
@@ -28,5 +29,5 @@ test: assemble_with_test assemble_with_mine
 	diff <(xxd $(OUT_MINE)) <(xxd $(OUT_TEST))
 	
 clean:
-	$(RM) assembled_test assembled_mine $(OUT_MINE) $(OUT_TEST)
+	$(RM) $(OUT_MINE) $(OUT_TEST)
 
