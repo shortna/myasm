@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  char opt = 0;
+  int opt = 0;
   const char *out_name = NULL;
   while ((opt = getopt_long(argc, argv, "o:", LONG_OPTIONS, NULL)) != -1) {
     switch (opt) {

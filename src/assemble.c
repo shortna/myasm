@@ -18,23 +18,20 @@ typedef struct Context {
 } Context;
 
 u8 collectLineOfTokens(FILE *src, Fields *f) {
-  u8 res = 0;
+  u8 ok = 1;
   f->n_fields = 0;
   size_t cur_line = LINE;
 
-  do {
-    res = getToken(src, f->fields + f->n_fields);
+  while (ok && cur_line == LINE && f->n_fields != FIELDS_MAX + 1) {
+    ok = getToken(src, f->fields + f->n_fields);
     if (f->fields[f->n_fields].type == T_LABEL_DECLARATION) {
       f->n_fields--;
       cur_line = LINE;
     }
     f->n_fields++;
-  } while (res && cur_line == LINE && f->n_fields != FIELDS_MAX + 1);
-
-  if (!res) {
-    f->n_fields--;
   }
-  return res;
+
+  return ok;
 }
 
 void makeLabels(Context *c) {

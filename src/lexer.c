@@ -65,22 +65,21 @@ u8 getToken(FILE *f, Token *t) {
     return 0;
   }
 
-  char ch;
+  int ch;
   size_t i = 0;
   while ((ch = tolower(getc(SRC))) != EOF) {
     switch (ch) {
-    case '\n':
-      LINE++;
-      __attribute__((fallthrough));
     case '/':
       while (ch != '\n' && ch != EOF) {
         ch = fgetc(SRC);
       }
       __attribute__((fallthrough));
+    case '\n':
+      LINE++;
+      __attribute__((fallthrough));
     case ' ':
     case ',':
     case '\t':
-      // skip the char
       if (i != 0) {
         goto done;
       }
