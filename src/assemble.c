@@ -10,32 +10,49 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define TOKEN_MAX (40)
-
 typedef struct Context {
   u64 pc;
   FILE *cur_src;
 } Context;
 
 u8 collectLineOfTokens(FILE *src, Fields *f) {
-  u8 ok = 1;
-  f->n_fields = 0;
-  size_t cur_line = LINE;
+  static Token LEFTOVER = {0};
 
-  while (ok && cur_line == LINE && f->n_fields != FIELDS_MAX + 1) {
-    ok = getToken(src, f->fields + f->n_fields);
-    if (f->fields[f->n_fields].type == T_LABEL_DECLARATION) {
+  u8 ok;
+  if (LEFTOVER.value) {
+    f->n_fields = 1;
+    copyToken(f->fields, &LEFTOVER);
+  } else {
+    f->n_fields = 0;
+  }
+
+  ok = getToken(src, f->fields + f->n_fields);
+  while (ok && f->n_fields != FIELDS_MAX + 1) {
+    switch (f->fields[f->n_fields].type) {
+    case T_LABEL_DECLARATION:
       f->n_fields--;
-      cur_line = LINE;
+      break;
+    case T_INSTRUCTION:
+    case T_DIRECTIVE:
+      copyToken(&LEFTOVER, f->fields + f->n_fields);
+      goto done;
+    default:
+      f->n_fields++;
     }
-    f->n_fields++;
+    ok = getToken(src, f->fields + f->n_fields);
+  }
+
+done:
+  if (!ok) {
+    free(LEFTOVER.value);
+    LEFTOVER.value = NULL;
   }
 
   return ok;
 }
 
 void makeLabels(Context *c) {
-  Token t = initToken(TOKEN_MAX);
+  Token t = initToken(TOKEN_SIZE);
 
   u8 res = 0;
   do {
@@ -58,7 +75,7 @@ void makeLabels(Context *c) {
 }
 
 u8 makeAssemble(Context *c, FILE *out) {
-  Fields f = initFields(TOKEN_MAX);
+  Fields f = initFields(TOKEN_SIZE);
   u8 ret = 0;
   fseek(out, ELF64_SIZE, SEEK_SET);
 

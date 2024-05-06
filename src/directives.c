@@ -30,7 +30,7 @@ typedef struct Flags {
   const u16 value;
 } Flags;
 
-Flags FLAGS[] = {
+static const Flags FLAGS[] = {
     {'w', SHF_WRITE},      {'a', SHF_ALLOC},
     {'x', SHF_EXECINSTR},  {'m', SHF_MERGE},
     {'s', SHF_STRINGS},    {'i', SHF_INFO_LINK},
