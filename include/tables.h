@@ -24,6 +24,6 @@ ssize_t searchInShdr(const char *needle);
 ssize_t getLabelPc(const char *needle);
 u8 changeBinding(size_t ind, u8 binding);
 
-u8 writeElf(FILE *out, size_t pc_end);
+u8 writeElf(FILE *out);
 
 #endif

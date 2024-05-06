@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+Context CONTEXT = {0};
+
 Fields initFields(size_t size_of_field) {
   Fields f = {0};
   for (u8 i = 0; i < FIELDS_MAX; i++) {

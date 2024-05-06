@@ -139,3 +139,8 @@ dcps1	0x0
 dcps1	0xFFFF
 dcps2	0xFFFF
 dcps3	0xFFFF
+
+label_adr:
+adr x1,label_adr
+adrp x1,label_adr
+

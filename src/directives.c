@@ -58,7 +58,7 @@ u8 decodeFlags(const char *flags, u64 *res) {
   return 1;
 }
 
-u8 dSection(const Fields *f, size_t offset) {
+u8 dSection(const Fields *f) {
   if (f->n_fields != 3) {
     // error here
     return 0;
@@ -69,7 +69,7 @@ u8 dSection(const Fields *f, size_t offset) {
     return 0;
   }
 
-  addToShdr(f->fields[1].value, SHT_PROGBITS, flags, offset, 0, 0, 0);
+  addToShdr(f->fields[1].value, SHT_PROGBITS, flags, CONTEXT.pc, 0, 0, 0);
   return 1;
 }
 
@@ -84,7 +84,7 @@ i8 searchDirective(const char *name) {
   return -1;
 }
 
-u8 execDirective(Fields *f, size_t pc) {
+u8 execDirective(Fields *f) {
   i8 n = searchDirective(f->fields->value + 1);
   u8 res = 0;
 
@@ -95,7 +95,7 @@ u8 execDirective(Fields *f, size_t pc) {
     res = dGlobal(f);
     break;
   case 1:
-    res = dSection(f, pc);
+    res = dSection(f);
     break;
   }
 

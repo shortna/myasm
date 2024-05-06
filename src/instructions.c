@@ -5,26 +5,38 @@
 #include <string.h>
 
 // Static opcodes
-#define SOP_LOGICAL_IMM (36)    // (0b00100100)
-#define SOP_LOGICAL_SH_REG (10) // (0b00001010)
-#define SOP_MOVE_WIDE (37)      // (0b00100101)
-#define SOP_ADD_SUB_IMM (34)    // (0b00100010)
-#define SOP_PC_REl (16)         // (0b00010000)
-#define SOP_EXCEPTIONS (212)    // (0b11010100)
+#define SOP_LOGICAL_IMM (36)               // (0b00100100)
+#define SOP_LOGICAL_SH_REG (10)            // (0b00001010)
+#define SOP_MOVE_WIDE (37)                 // (0b00100101)
+#define SOP_ADD_SUB_IMM (34)               // (0b00100010)
+#define SOP_PC_REl (16)                    // (0b00010000)
+#define SOP_EXCEPTIONS (212)               // (0b11010100)
+#define SOP_CONDITIONAL_BRANCH_IMM (84)    // (0b01010100)
+#define SOP_UNCONDITIONAL_BRANCH_IMM (5)   // (0b00000101)
+#define SOP_UNCONDITIONAL_BRANCH_REG (107) // (0b01101011)
+#define SOP_COMPARE_BRANCH (26)            // (0b00011010)
+#define SOP_TEST_BRANCH (27)               // (0b00011011)
 
+#pragma clang diagnostic ignored "-Wmissing-field-initializers"
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 // IMPORTANT
 // instruction mnemonic MUST be in order of incresing opc field
 static const Instruction INSTRUCTIONS[] = {
     {{"adr", "adrp"}, PCRELADDRESSING, {2, REGISTER, LABEL}},
     {{"movn", "movz", "movk"}, MOVEWIDE, {3, REGISTER, IMMEDIATE, SHIFT | OPTIONAL}},
-
     {{"add", "sub"}, ADDSUB_IMM, {4, REGISTER | SP, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
     {{"adds", "subs"}, ADDSUB_IMM, {4, REGISTER, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
-
     {{"and", "orr", "eor", "ands"}, LOGICAL_IMM, {3, REGISTER | SP, REGISTER, IMMEDIATE}},
     {{"and", "bic", "orr", "orn", "eor", "eon", "ands", "bics"}, LOGICAL_SH_REG, {4, REGISTER, REGISTER, REGISTER, SHIFT | OPTIONAL}},
     {{"svc", "hvc", "smc", "brk", "hlt", "tcancel"}, EXCEPTION, {1, IMMEDIATE}},
     {{"dcps1", "dcps2", "dcps3"}, EXCEPTION, {1, IMMEDIATE | OPTIONAL}},
+
+    {{"B.", "BC."}, CONDITIONAL_BRANCH_IMM, {2, CONDITION, LABEL}},
+    {{"B", "BL"}, UNCONDITIONAL_BRANCH_IMM, {1, LABEL}},
+    {{"BR", "BLR"}, UNCONDITIONAL_BRANCH_REG, {1, LABEL}},
+    {{"RET"}, UNCONDITIONAL_BRANCH_REG, {1, LABEL | OPTIONAL}},
+    {{"CBZ", "CBNZ"}, COMPARE_BRANCH, {2, REGISTER, LABEL}},
+    {{"TBZ", "TBNZ"}, TEST_BRANCH, {3, REGISTER, IMMEDIATE, LABEL}},
 };
 
 u8 searchMnemonic(const char *mnemonic) {
@@ -57,10 +69,41 @@ u8 instructionIndex(InstructionType type, const char *mnemonic) {
 }
 
 u32 assemblePcRelAddressing(Fields *instruction) {
-  (void) instruction;
-  return 0; 
-}
+  u32 assembled_instruction = 0;
+  Register Rd;
 
+  if (!parseRegister(instruction->fields[1].value, &Rd)) {
+    // error here
+    return 0;
+  }
+
+  if (!Rd.extended) {
+    // error here
+    return 0;
+  }
+
+  ssize_t label_pc = getLabelPc(instruction->fields[2].value);
+  if (label_pc == -1) {
+    // error here
+    return 0;
+  }
+
+  i32 offset = label_pc - CONTEXT.pc + 4;
+  if (offset >= ((i32)1 << 21) || offset <= ((i32)~1))  {
+    // error here
+    return 0;
+  }
+
+  // mask = 00000000 00000000 00000011 // low 2 bits
+  u8 immlo = offset & 0x3;
+  // mask = 00011111 11111111 11111100 // high 19 bits
+  u8 immhi = offset & 0x1ffffc;
+  u8 op = instructionIndex(PCRELADDRESSING, instruction->fields[0].value);
+
+  assembled_instruction |= ((u32)op << 31) | ((u32)immlo << 29) |
+                           ((u32)SOP_PC_REl << 23) | ((u32)immhi << 5) | Rd.n;
+  return assembled_instruction;
+}
 
 // SHAMELESSLY STOLEN FROM LLVM
 
@@ -565,6 +608,8 @@ u32 assemble(Fields *instruction) {
   case NONE:
     // error here
     return 0;
+  default:
+    (void)NULL;
   }
 
   return i ? i : 0;

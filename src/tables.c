@@ -316,26 +316,33 @@ void sortSections(void) {
   SECTIONS.items[1].sh_offset = ELF64_SIZE;
 }
 
-void backpatch(size_t pc_end) {
+void backpatch(void) {
   Elf64_Shdr *section = SECTIONS.items;
   for (size_t i = 1; i < SECTIONS.count - 1; i++) {
     section[i].sh_size = section[i + 1].sh_offset - section[i].sh_offset;
   }
 
   section[SECTIONS.count - 1].sh_size =
-      pc_end - section[SECTIONS.count - 1].sh_offset + ELF64_SIZE;
+      CONTEXT.pc - section[SECTIONS.count - 1].sh_offset + ELF64_SIZE;
 
   Elf64_Sym *symbol = SYMBOLS.items;
-  for (size_t i = 1; i < SECTIONS.count; i++) {
+  if (SECTIONS.count == 2) {
+    for (size_t i = 1; i < SYMBOLS.count; i++) {
+      symbol[i].st_shndx = 1;
+    }
+    return;
+  }
+
+  for (size_t i = 1; i < SECTIONS.count - 1; i++) {
     for (size_t j = 1; j < SYMBOLS.count; j++) {
-      if (symbol[j].st_value + ELF64_SIZE <= section[i].sh_offset) {
+      if (symbol[j].st_value + ELF64_SIZE <= section[i + 1].sh_offset) {
         symbol[j].st_shndx = i;
       }
     }
   }
 }
 
-u8 writeElf(FILE *out, size_t pc_end) {
+u8 writeElf(FILE *out) {
   if (SECTIONS.count == 1) { // if no section default to .text
     addToShdr(".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, 0, 0, 0, 0);
   }
@@ -344,7 +351,7 @@ u8 writeElf(FILE *out, size_t pc_end) {
     return 0;
   }
   sortSections();
-  backpatch(pc_end);
+  backpatch();
   writeTables(out);
 
   fseek(out, 0, SEEK_SET);

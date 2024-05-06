@@ -11,11 +11,7 @@ typedef struct Fields Fields;
 u32 assemble(Fields *instruction);
 u8 searchMnemonic(const char *mnemonic);
 
-#ifdef __clang__
-typedef enum : u8 {
-#else
 typedef enum {
-#endif
   NO_ARG = 0,
   IMMEDIATE = 1,
   REGISTER = 2,
@@ -24,7 +20,8 @@ typedef enum {
   SHIFT = 16,
   EXTEND = 32,
   BRACKETS = 64,
-  OPTIONAL = 128,
+  CONDITION = 128,
+  OPTIONAL = 1024,
 } Argument;
 
 typedef struct Signature {
@@ -46,6 +43,12 @@ typedef enum InstructionType {
   ADDSUB_IMM,
   PCRELADDRESSING,
   EXCEPTION,
+  CONDITIONAL_BRANCH_IMM,
+  UNCONDITIONAL_BRANCH_IMM,
+  UNCONDITIONAL_BRANCH_REG,
+  COMPARE_BRANCH,
+  TEST_BRANCH,
+
 } InstructionType;
 
 typedef struct Instruction {

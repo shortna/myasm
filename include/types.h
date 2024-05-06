@@ -39,6 +39,16 @@ typedef struct Fields {
   u8 n_fields;
 } Fields;
 
+struct _IO_FILE;
+typedef struct _IO_FILE FILE;
+
+typedef struct Context {
+  u64 pc;
+  FILE *cur_src;
+} Context;
+
+extern Context CONTEXT;
+
 Fields initFields(size_t size_of_field);
 void freeFields(Fields *fields);
 
