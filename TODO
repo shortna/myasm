@@ -1,8 +1,8 @@
 ABSOLUTELY NEED:
   DONE: FIX BUG WITH COMMENT AND FUNCTION collectLineOfTokens
   ADD INSTRUCTIONS, DIRECTIVES
-    IMPLEMENT CheckBounds, rechek instruction asse,bly with number out of bounds e.g 
-      if offset is only 26 bits but assemble ors all 32 bits it probably error
+    rechek instruction assembly 
+    if offset is only 26 bits but assemble ors all 32 bits it probably error, use mask
   ERRORS
 
 WOULD BE COOL:
