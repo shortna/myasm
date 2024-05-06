@@ -17,6 +17,7 @@ typedef enum {
   T_IMMEDIATE,
   T_SHIFT,
   T_EXTEND,
+  T_CONDITION,
 
   // one symbol tokens
   T_PLUS,

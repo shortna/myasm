@@ -17,12 +17,16 @@
 #define SOP_COMPARE_BRANCH (26)            // (0b00011010)
 #define SOP_TEST_BRANCH (27)               // (0b00011011)
 
+// sets bit in number n at position p
+#define SET_BIT(n, p) (n | (1ull << p))
+
 #pragma clang diagnostic ignored "-Wmissing-field-initializers"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 // IMPORTANT
 // instruction mnemonic MUST be in order of incresing opc field
 static const Instruction INSTRUCTIONS[] = {
     {{"adr", "adrp"}, PCRELADDRESSING, {2, REGISTER, LABEL}},
+
     {{"movn", "movz", "movk"}, MOVEWIDE, {3, REGISTER, IMMEDIATE, SHIFT | OPTIONAL}},
     {{"add", "sub"}, ADDSUB_IMM, {4, REGISTER | SP, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
     {{"adds", "subs"}, ADDSUB_IMM, {4, REGISTER, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
@@ -31,12 +35,12 @@ static const Instruction INSTRUCTIONS[] = {
     {{"svc", "hvc", "smc", "brk", "hlt", "tcancel"}, EXCEPTION, {1, IMMEDIATE}},
     {{"dcps1", "dcps2", "dcps3"}, EXCEPTION, {1, IMMEDIATE | OPTIONAL}},
 
-    {{"B.", "BC."}, CONDITIONAL_BRANCH_IMM, {2, CONDITION, LABEL}},
-    {{"B", "BL"}, UNCONDITIONAL_BRANCH_IMM, {1, LABEL}},
-    {{"BR", "BLR"}, UNCONDITIONAL_BRANCH_REG, {1, LABEL}},
-    {{"RET"}, UNCONDITIONAL_BRANCH_REG, {1, LABEL | OPTIONAL}},
-    {{"CBZ", "CBNZ"}, COMPARE_BRANCH, {2, REGISTER, LABEL}},
-    {{"TBZ", "TBNZ"}, TEST_BRANCH, {3, REGISTER, IMMEDIATE, LABEL}},
+    {{"b.", "bc."}, CONDITIONAL_BRANCH_IMM, {2, CONDITION, LABEL}},
+    {{"b", "bl"}, UNCONDITIONAL_BRANCH_IMM, {1, LABEL}},
+    {{"br", "blr"}, UNCONDITIONAL_BRANCH_REG, {1, REGISTER}},
+    {{"ret"}, UNCONDITIONAL_BRANCH_REG, {1, LABEL | OPTIONAL}},
+    {{"cbz", "cbnz"}, COMPARE_BRANCH, {2, REGISTER, LABEL}},
+    {{"tbz", "tbnz"}, TEST_BRANCH, {3, REGISTER, IMMEDIATE, LABEL}},
 };
 
 u8 searchMnemonic(const char *mnemonic) {
@@ -68,6 +72,58 @@ u8 instructionIndex(InstructionType type, const char *mnemonic) {
   return 0;
 }
 
+u8 checkBounds(u64 n, u8 bits, bool sign) {
+  return 1;
+}
+
+u32 assembleConditionalBranchImm(Fields *instruction) {
+  u32 assembled_instruction = 0;
+  ConditionType c = 0;
+  if (!parseCondition(instruction->fields[1].value, &c)) {
+    return 0;
+  }
+
+  ssize_t label_pc = getLabelPc(instruction->fields[2].value);
+  if (label_pc == -1) {
+    // error here
+    return 0;
+  }
+
+  i32 offset = label_pc - CONTEXT.pc + 4;
+  if (!checkBounds(offset, 19, true)) {
+    // error here
+    return 0;
+  }
+
+  u8 o = instructionIndex(CONDITIONAL_BRANCH_IMM, instruction->fields[0].value);
+
+  assembled_instruction = ((u32)SOP_CONDITIONAL_BRANCH_IMM << 23) |
+                          ((u32)offset << 4) | (o << 3) | c;
+  return assembled_instruction;
+}
+
+u32 assembleUnconditionalBranchImm(Fields *instruction) {
+  u32 assembled_instruction = 0;
+
+  ssize_t label_pc = getLabelPc(instruction->fields[1].value);
+  if (label_pc == -1) {
+    // error here
+    return 0;
+  }
+
+  i32 offset = label_pc - CONTEXT.pc + 4;
+  if (!checkBounds(offset, 26, true)) {
+    // error here
+    return 0;
+  }
+
+  u8 o = instructionIndex(UNCONDITIONAL_BRANCH_IMM, instruction->fields[0].value);
+
+  assembled_instruction =
+      ((u32)o << 31) | ((u32)SOP_UNCONDITIONAL_BRANCH_IMM << 25) | offset;
+  return assembled_instruction;
+}
+
 u32 assemblePcRelAddressing(Fields *instruction) {
   u32 assembled_instruction = 0;
   Register Rd;
@@ -89,10 +145,6 @@ u32 assemblePcRelAddressing(Fields *instruction) {
   }
 
   i32 offset = label_pc - CONTEXT.pc + 4;
-  if (offset >= ((i32)1 << 21) || offset <= ((i32)~1))  {
-    // error here
-    return 0;
-  }
 
   // mask = 00000000 00000000 00000011 // low 2 bits
   u8 immlo = offset & 0x3;
@@ -527,6 +579,9 @@ Signature decodeTokens(const Fields *instruction) {
     case T_EXTEND:
       s_arr[i] = EXTEND;
       break;
+    case T_CONDITION:
+      s_arr[i] = CONDITION;
+      break;
 
       /*
       #warning "replace strcat in future or check length before concatinating"
@@ -605,11 +660,17 @@ u32 assemble(Fields *instruction) {
   case EXCEPTION:
     i = assembleException(instruction);
     break;
+  case CONDITIONAL_BRANCH_IMM:
+    i = assembleConditionalBranchImm(instruction);
+  case UNCONDITIONAL_BRANCH_IMM:
+    i = assembleUnconditionalBranchImm(instruction);
+  case UNCONDITIONAL_BRANCH_REG:
+  case COMPARE_BRANCH:
+  case TEST_BRANCH:
+    break;
   case NONE:
     // error here
     return 0;
-  default:
-    (void)NULL;
   }
 
   return i ? i : 0;

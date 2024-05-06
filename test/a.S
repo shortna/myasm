@@ -140,7 +140,47 @@ dcps1	0xFFFF
 dcps2	0xFFFF
 dcps3	0xFFFF
 
-label_adr:
-adr x1,label_adr
-adrp x1,label_adr
+label_b:
+  b	label_b
+  b.al	label_b
+  b.eq	label_b
+  b.eq	label_b
+  b.ge	label_b
+  b.gt	label_b
+  b.hi	label_b
+  b.hs	label_b
+  b.le	label_b
+  b.lo	label_b
+  b.ls	label_b
+  b.lt	label_b
+  b.mi	label_b
+  b.ne	label_b
+  b.pl	label_b
+  b.vc	label_b
+  b.vs	label_b
+
+label_bl:
+  bl	label_bl
+
+blr	x1
+br	x1
+
+ret
+ret	x1
+
+label_cbnz:
+  cbnz	w1,label_cbnz
+  cbnz	x1,label_cbnz
+
+label_cbz:
+  cbz	w1,label_cbz
+  cbz	x1,label_cbz
+
+label_tbnz:
+  tbnz	w1,2,label_tbnz
+  tbnz	x1,63,label_tbnz
+
+label_tbz:
+  tbz	w1,2,label_tbz
+  tbz	x1,63,label_tbz
 

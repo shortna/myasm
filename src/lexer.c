@@ -33,14 +33,6 @@ TokenType getTokenType(Token *t) {
     return T_IMMEDIATE;
   }
 
-  if (parseExtend(t->value, NULL)) {
-    return T_EXTEND;
-  }
-
-  if (parseShift(t->value, NULL)) {
-    return T_SHIFT;
-  }
-
   if (searchMnemonic(t->value)) {
     return T_INSTRUCTION;
   }
@@ -52,6 +44,19 @@ TokenType getTokenType(Token *t) {
   if (parseLabelDeclaration(t->value)) {
     return T_LABEL_DECLARATION;
   }
+
+  if (parseCondition(t->value, NULL)) {
+    return T_CONDITION;
+  }
+
+  if (parseExtend(t->value, NULL)) {
+    return T_EXTEND;
+  }
+
+  if (parseShift(t->value, NULL)) {
+    return T_SHIFT;
+  }
+
 
   return T_LABEL;
 }
@@ -94,6 +99,8 @@ u8 getToken(FILE *f, Token *t) {
         fseek(SRC, -1, SEEK_CUR);
         goto done;
       }
+      __attribute__((fallthrough));
+    case '.':
       t->value[i] = ch;
       i++;
       goto done;

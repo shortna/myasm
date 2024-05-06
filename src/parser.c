@@ -195,3 +195,48 @@ u8 parseExtend(const char *extend, ExtendType *ex) {
   }
   return 1;
 }
+
+u8 parseCondition(const char *condition, ConditionType *ct) {
+  ConditionType c = 0;
+
+  if (strcmp(condition, "EQ") == 0) {
+    c = EQ;
+  } else if (strcmp(condition, "NE") == 0) {
+    c = NE;
+  } else if (strcmp(condition, "CS") == 0) {
+    c = CS;
+  } else if (strcmp(condition, "CC") == 0) {
+    c = CC;
+  } else if (strcmp(condition, "MI") == 0) {
+    c = MI;
+  } else if (strcmp(condition, "PL") == 0) {
+    c = PL;
+  } else if (strcmp(condition, "VS") == 0) {
+    c = VS;
+  } else if (strcmp(condition, "VC") == 0) {
+    c = VC;
+  } else if (strcmp(condition, "HI") == 0) {
+    c = HI;
+  } else if (strcmp(condition, "LS") == 0) {
+    c = LS;
+  } else if (strcmp(condition, "GE") == 0) {
+    c = GE;
+  } else if (strcmp(condition, "LT") == 0) {
+    c = LT;
+  } else if (strcmp(condition, "GT") == 0) {
+    c = GT;
+  } else if (strcmp(condition, "LE") == 0) {
+    c = LE;
+  } else if (strcmp(condition, "AL") == 0) {
+    c = AL;
+  } else if (strcmp(condition, "NV") == 0) {
+    c = NV;
+  } else {
+    return 0;
+  }
+
+  if (ct) {
+    *ct = c;
+  }
+  return 1;
+}
