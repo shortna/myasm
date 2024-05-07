@@ -6,6 +6,6 @@ ABSOLUTELY NEED:
   ERRORS
 
 WOULD BE COOL:
-  ADD CORRECT ORDER OF WRITING SECTIONS e.g .text - first, .data - second, .bss - third
   ALIASES
+  ADD CORRECT ORDER OF WRITING SECTIONS e.g .text - first, .data - second, .bss - third
   ADD SUPPORT FOR ASSEMBLING MULTIPLE FILES

@@ -1,170 +1,186 @@
 .global _start
-
 .section .text,"ax"
 
 // comment
 _start: // commet
-// movk x0,0,lsl 0
-// movk x0,0,lsl 16
-// movk x0,0,lsl 32
-// movk x0,0,lsl 48
-// movn x0,0,lsl 0
-// movn x0,0,lsl 16
-// movn x0,0,lsl 32
-// movn x0,0,lsl 48
-// movz x0,0,lsl 0
-// movz x0,0,lsl 16
-// movz x0,0,lsl 32
-// movz x0,0,lsl 48
-// movk w1,0xFFFF
-// movk w1,0xFFFF,lsl 16
-// movk x1,0xFFFF,lsl 32
-// movk x1,0xFFFF,lsl 48
-// movn w1,0xFFFF
-// movn w1,0xFFFF,lsl 16
-// movz w1,0xffff
-// movz w1,0xffff,lsl 0
-// movz w1,0xffff,lsl 16
-// movz x1,0xffff,lsl 32
-// movz x1,0xffff,lsl 48
-// add	sp,sp,0x123
-// add	sp,x2,0x123
-// add	w1,w2,0x123
-// add	w4,w8,0x123,lsl 12
-// add	wsp,w2,0x123
-// add	wsp,wsp,0x123
-// add	x1,x2,0x123
-// add	x1,x2,0xFFF
-// add	x1,x2,0xFFF,lsl 12
-// add	x1,sp,0x123
-// adds	w1,wsp,0x123
-// adds	w8,w16,0x123,lsl 12
-// adds	x8,x16,0x123,lsl 12
-// sub	sp,sp,0x123
-// sub	sp,x2,0x123
-// sub	w1,w2,0x123
-// sub	w4,w8,0x123,lsl 12
-// sub	wsp,w2,0x123
-// sub	wsp,wsp,0x123
-// sub	x1,x2,0x123
-// sub	x1,x2,0xFFF
-// sub	x1,x2,0xFFF,lsl 12
-// sub	x1,sp,0x123
-// subs	w1,wsp,0x123
-// subs	w8,w16,0x123,lsl 12
-// subs	x8,x16,0x123,lsl 12
-// and	w1,w2,0x0001FE00
-// and	w1,w2,w3
-// and	w1,w2,w3,asr 4
-// and	w1,w2,w3,lsl 4
-// and	w1,w2,w3,lsr 4
-// and	w1,w2,w3,ror 4
-// and	wzr,w2,w3,ror 4
-// and	x1,x2,0x0003FC0000000000
-// and	x1,x2,x3
-// and	x1,x2,x3,lsl 4
-// and	x1,x2,x3,ror 4
-// and	xzr,x2,x3,ror 4
-// ands	w1,w2,0xFFFFFFF1
-// ands	w1,w2,w3
-// ands	w1,w2,w3,lsl 4
-// ands	w1,w2,w3,ror 4
-// ands	x1,x2,0x5555555555555555
-// ands	x1,x2,x3
-// ands	x1,x2,x3,lsl 4
-// ands	x1,x2,x3,ror 4
-// orn	w1,w2,w3
-// orn	w1,w2,w3,asr 4
-// orn	w1,w2,w3,lsl 4
-// orn	w1,w2,w3,lsr 4
-// orn	w1,w2,w3,ror 4
-// orn	x1,x2,x3
-// orn	x1,x2,x3,asr 4
-// orn	x1,x2,x3,lsl 4
-// orn	x1,x2,x3,lsr 4
-// orn	x1,x2,x3,ror 4
-// orr	w1,w2,0xFFFFFFF1
-// orr	w1,w2,w3
-// orr	w1,w2,w3,asr 4
-// orr	w1,w2,w3,lsl 4
-// orr	w1,w2,w3,lsr 4
-// orr	w1,w2,w3,ror 4
-// orr	x1,x2,0xAAAAAAAAAAAAAAAA
-// orr	x1,x2,x3
-// orr	x1,x2,x3,lsl 4
-// orr	x1,x2,x3,ror 4
-// eon	w1,w2,w3
-// eon	w1,w2,w3,asr 4
-// eon	w1,w2,w3,lsl 4
-// eon	w1,w2,w3,lsr 4
-// eon	w1,w2,w3,ror 4
-// eon	wzr,w2,w3,ror 4
-// eon	x1,x2,x3
-// eon	x1,x2,x3,lsl 4
-// eon	x1,x2,x3,ror 4
-// eon	xzr,x2,x3,ror 4
-// eor	sp,x2,0xAAAAAAAAAAAAAAAA
-// eor	w1,w2,0xFFFFFFF1
-// eor	w1,w2,w3
-// eor	w1,w2,w3,asr 4
-// eor	w1,w2,w3,lsl 4
-// eor	w1,w2,w3,lsr 4
-// eor	w1,w2,w3,ror 4
-// eor	wzr,w2,w3,ror 4
-// eor	x1,x2,0xFFFFFFFFFFFFFFF1
-// eor	x1,x2,x3
-// eor	x1,x2,x3,lsl 4
-// eor	x1,x2,x3,ror 4
-// eor	xzr,x2,x3,ror 4
-// bic	w1,w2,w3
-// bic	w1,w2,w3,asr 4
-// bic	w1,w2,w3,lsl 4
-// bic	w1,w2,w3,lsr 4
-// bic	w1,w2,w3,ror 4
-// bic	x1,x2,x3
-// bic	x1,x2,x3,lsl 4
-// bic	x1,x2,x3,ror 4
-// bics	w1,w2,w3
-// bics	w1,w2,w3,lsl 4
-// bics	w1,w2,w3,ror 4
-// bics	x1,x2,x3
-// bics	x1,x2,x3,lsl 4
-// bics	x1,x2,x3,ror 4
-// svc	0xFFFF
-// hvc	0xFFFF
-// smc	0xFFFF
-// brk	0xFFFF
-// hlt	0xFFFF
-// dcps1	0x0
-// dcps1	0xFFFF
-// dcps2	0xFFFF
-// dcps3	0xFFFF
+movk x0,0,lsl 0
+movk x0,0,lsl 16
+movk x0,0,lsl 32
+movk x0,0,lsl 48
+movn x0,0,lsl 0
+movn x0,0,lsl 16
+movn x0,0,lsl 32
+movn x0,0,lsl 48
+movz x0,0,lsl 0
+movz x0,0,lsl 16
+movz x0,0,lsl 32
+movz x0,0,lsl 48
+movk w1,0xFFFF
+movk w1,0xFFFF,lsl 16
+movk x1,0xFFFF,lsl 32
+movk x1,0xFFFF,lsl 48
+movn w1,0xFFFF
+movn w1,0xFFFF,lsl 16
+movz w1,0xffff
+movz w1,0xffff,lsl 0
+movz w1,0xffff,lsl 16
+movz x1,0xffff,lsl 32
+movz x1,0xffff,lsl 48
+add	sp,sp,0x123
+add	sp,x2,0x123
+add	w1,w2,0x123
+add	w4,w8,0x123,lsl 12
+add	wsp,w2,0x123
+add	wsp,wsp,0x123
+add	x1,x2,0x123
+add	x1,x2,0xFFF
+add	x1,x2,0xFFF,lsl 12
+add	x1,sp,0x123
+adds	w1,wsp,0x123
+adds	w8,w16,0x123,lsl 12
+adds	x8,x16,0x123,lsl 12
+sub	sp,sp,0x123
+sub	sp,x2,0x123
+sub	w1,w2,0x123
+sub	w4,w8,0x123,lsl 12
+sub	wsp,w2,0x123
+sub	wsp,wsp,0x123
+sub	x1,x2,0x123
+sub	x1,x2,0xFFF
+sub	x1,x2,0xFFF,lsl 12
+sub	x1,sp,0x123
+subs	w1,wsp,0x123
+subs	w8,w16,0x123,lsl 12
+subs	x8,x16,0x123,lsl 12
+and	w1,w2,0x0001FE00
+and	w1,w2,w3
+and	w1,w2,w3,asr 4
+and	w1,w2,w3,lsl 4
+and	w1,w2,w3,lsr 4
+and	w1,w2,w3,ror 4
+and	wzr,w2,w3,ror 4
+and	x1,x2,0x0003FC0000000000
+and	x1,x2,x3
+and	x1,x2,x3,lsl 4
+and	x1,x2,x3,ror 4
+and	xzr,x2,x3,ror 4
+ands	w1,w2,0xFFFFFFF1
+ands	w1,w2,w3
+ands	w1,w2,w3,lsl 4
+ands	w1,w2,w3,ror 4
+ands	x1,x2,0x5555555555555555
+ands	x1,x2,x3
+ands	x1,x2,x3,lsl 4
+ands	x1,x2,x3,ror 4
+orn	w1,w2,w3
+orn	w1,w2,w3,asr 4
+orn	w1,w2,w3,lsl 4
+orn	w1,w2,w3,lsr 4
+orn	w1,w2,w3,ror 4
+orn	x1,x2,x3
+orn	x1,x2,x3,asr 4
+orn	x1,x2,x3,lsl 4
+orn	x1,x2,x3,lsr 4
+orn	x1,x2,x3,ror 4
+orr	w1,w2,0xFFFFFFF1
+orr	w1,w2,w3
+orr	w1,w2,w3,asr 4
+orr	w1,w2,w3,lsl 4
+orr	w1,w2,w3,lsr 4
+orr	w1,w2,w3,ror 4
+orr	x1,x2,0xAAAAAAAAAAAAAAAA
+orr	x1,x2,x3
+orr	x1,x2,x3,lsl 4
+orr	x1,x2,x3,ror 4
+eon	w1,w2,w3
+eon	w1,w2,w3,asr 4
+eon	w1,w2,w3,lsl 4
+eon	w1,w2,w3,lsr 4
+eon	w1,w2,w3,ror 4
+eon	wzr,w2,w3,ror 4
+eon	x1,x2,x3
+eon	x1,x2,x3,lsl 4
+eon	x1,x2,x3,ror 4
+eon	xzr,x2,x3,ror 4
+eor	sp,x2,0xAAAAAAAAAAAAAAAA
+eor	w1,w2,0xFFFFFFF1
+eor	w1,w2,w3
+eor	w1,w2,w3,asr 4
+eor	w1,w2,w3,lsl 4
+eor	w1,w2,w3,lsr 4
+eor	w1,w2,w3,ror 4
+eor	wzr,w2,w3,ror 4
+eor	x1,x2,0xFFFFFFFFFFFFFFF1
+eor	x1,x2,x3
+eor	x1,x2,x3,lsl 4
+eor	x1,x2,x3,ror 4
+eor	xzr,x2,x3,ror 4
+bic	w1,w2,w3
+bic	w1,w2,w3,asr 4
+bic	w1,w2,w3,lsl 4
+bic	w1,w2,w3,lsr 4
+bic	w1,w2,w3,ror 4
+bic	x1,x2,x3
+bic	x1,x2,x3,lsl 4
+bic	x1,x2,x3,ror 4
+bics	w1,w2,w3
+bics	w1,w2,w3,lsl 4
+bics	w1,w2,w3,ror 4
+bics	x1,x2,x3
+bics	x1,x2,x3,lsl 4
+bics	x1,x2,x3,ror 4
+svc	0xFFFF
+hvc	0xFFFF
+smc	0xFFFF
+brk	0xFFFF
+hlt	0xFFFF
+dcps1	0x0
+dcps1	0xFFFF
+dcps2	0xFFFF
+dcps3	0xFFFF
 
 label_b:
   b	label_b
-  b.al	label_b
-  b.eq	label_b
-  b.eq	label_b
-  b.ge	label_b
-  b.gt	label_b
-  b.hi	label_b
-  b.hs	label_b
-  b.le	label_b
-  b.lo	label_b
-  b.ls	label_b
-  b.lt	label_b
-  b.mi	label_b
-  b.ne	label_b
-  b.pl	label_b
-  b.vc	label_b
-  b.vs	label_b
+  bl label_b
+  b.eq label_b
+  b.ne label_b
+  b.cs label_b
+  b.cc label_b
+  b.mi label_b
+  b.pl label_b
+  b.vs label_b
+  b.vc label_b
+  b.hi label_b
+  b.ls label_b
+  b.ge label_b
+  b.lt label_b
+  b.gt label_b
+  b.le label_b
+  b.al label_b
+  b.nv label_b
 
-label_bl:
-  bl	label_bl
+  b	label_c
+  bl label_c
+  b.eq label_c
+  b.ne label_c
+  b.cs label_c
+  b.cc label_c
+  b.mi label_c
+  b.pl label_c
+  b.vs label_c
+  b.vc label_c
+  b.hi label_c
+  b.ls label_c
+  b.ge label_c
+  b.lt label_c
+  b.gt label_c
+  b.le label_c
+  b.al label_c
+  b.nv label_c
+label_c:
 
-blr	x1
-br	x1
-
+blr x1
+br x1
 ret
 ret	x1
 
@@ -183,4 +199,3 @@ label_tbnz:
 label_tbz:
   tbz	w1,2,label_tbz
   tbz	x1,63,label_tbz
-

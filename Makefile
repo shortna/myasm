@@ -6,8 +6,8 @@ INCLUDE_DIR := include
 TARGET_DIR := build
 TARGET := myasm
 
-CFLAGS := -std=gnu11 -g -Wpedantic -Wall -Wextra -I $(INCLUDE_DIR) 
-#					-fsanitize=address,pointer-compare,pointer-subtract,leak,undefined,null,bounds,alignment
+CFLAGS := -std=gnu11 -g -Wpedantic -Wall -Wextra -I $(INCLUDE_DIR) -D DEBUG \
+					-fsanitize=address,pointer-compare,pointer-subtract,leak,undefined,null,bounds,alignment
 CC := clang
 
 .PHONY: all clean MCL test
@@ -17,17 +17,17 @@ all: $(TARGET_DIR) $(TARGET)
 $(TARGET_DIR):
 	mkdir $@
 
-$(TARGET): $(shell find $(SRC_DIR) -name *.c)
+$(TARGET): $(SRC_DIR)/*
 	$(CC) $^ $(CFLAGS) -o $(TARGET_DIR)/$@
 
 # MCL
 # Make Clang Lsp
 MCL:
-	bear -- make
+	bear -- $(MAKE)
 
 test:
 	@$(MAKE) $(TARGET) > /dev/null 2>&1
-	@make -C test --no-print-directory
+	@$(MAKE) -C test --no-print-directory
 
 clean:
 	$(RM) -r $(TARGET_DIR)

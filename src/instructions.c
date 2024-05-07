@@ -20,6 +20,16 @@
 #define BIT(p) (1ull << (p))
 #define GENMASK(x) ((1ull << (x)) - 1ull)
 
+#ifdef DEBUG
+#include <stdio.h>
+void printBinary(u32 n) {
+  for (u8 i = 0; i < sizeof(n) * 8 - 1; i++) {
+    printf("%d", (n & (BIT(sizeof(n) * 8 - 1) >> i)) ? 1 : 0);
+  }
+  printf("\n");
+}
+#endif
+
 #pragma clang diagnostic ignored "-Wmissing-field-initializers"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 // IMPORTANT
@@ -71,8 +81,8 @@ u8 instructionIndex(InstructionType type, const char *mnemonic) {
 }
 
 // check if (size) bits of signed (n) fits in bounds
-u8 checkBounds(u64 n, u8 size) {
-  u64 mask = GENMASK(size - 1);
+u8 checkBounds(i64 n, u8 size) {
+  i64 mask = GENMASK(size - 1);
   if (n < 0)  {
     return n > (~mask | 1);
   }
@@ -100,13 +110,15 @@ u32 assembleUnconditionalBranchReg(Fields *instruction) {
       // error here
       return 0;
     }
+  } else {
+    Rn.n = 30; // ret defaults to R30
   }
 
   const u8 Z = 0;
   const u16 op2 = 0xf80;
 
-  assembled_instruction |= ((u32)SOP_UNCONDITIONAL_BRANCH_REG << 24) |
-                           ((u32)Z << 22) | ((u32)op << 20) | ((u32)op2 << 9) |
+  assembled_instruction |= ((u32)SOP_UNCONDITIONAL_BRANCH_REG << 25) |
+                           ((u32)Z << 24) | ((u32)op << 21) | ((u32)op2 << 9) |
                            ((u32)Rn.n << 5) | 0;
   return assembled_instruction;
 }
@@ -129,19 +141,19 @@ u32 assembleCompareBranch(Fields *instruction) {
   }
 
   const u8 offset_size = 19;
-  i32 offset = label_pc - CONTEXT.pc + 4;
+  i32 offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
   if (!checkBounds(offset, offset_size)) {
     // error here
     return 0;
   }
-  if (offset < 0) {
-    offset |= BIT(offset_size);
-  }
   offset = GENMASK(offset_size) & offset;
-  u8 op = instructionIndex(COMPARE_BRANCH, instruction->fields[0].value);
+  if (offset < 0) {
+    offset |= BIT(offset_size - 1);
+  }
 
-  assembled_instruction |= ((u32)sf << 31) | ((u32)SOP_COMPARE_BRANCH << 24) |
-                           ((u32)op << 23) | ((u32)offset << 5) | Rt.n;
+  u8 op = instructionIndex(COMPARE_BRANCH, instruction->fields[0].value);
+  assembled_instruction |= ((u32)sf << 31) | ((u32)SOP_COMPARE_BRANCH << 25) |
+                           ((u32)op << 24) | ((u32)offset << 5) | Rt.n;
   return assembled_instruction;
 }
 
@@ -174,19 +186,19 @@ u32 assembleTestBranch(Fields *instruction) {
   }
 
   const u8 offset_size = 14;
-  i32 offset = label_pc - CONTEXT.pc + 4;
+  i32 offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
   if (!checkBounds(offset, offset_size)) {
     // error here
     return 0;
   }
-  if (offset < 0) {
-    offset |= BIT(offset_size);
-  }
   offset = GENMASK(offset_size) & offset;
-  u8 op = instructionIndex(TEST_BRANCH, instruction->fields[0].value);
+  if (offset < 0) {
+    offset |= BIT(offset_size - 1);
+  }
 
-  assembled_instruction |= ((u32)sf << 31) | ((u32)SOP_TEST_BRANCH << 24) |
-                           ((u32)op << 23) | ((u32)imm << 18) |
+  u8 op = instructionIndex(TEST_BRANCH, instruction->fields[0].value);
+  assembled_instruction |= ((u32)sf << 31) | ((u32)SOP_TEST_BRANCH << 25) |
+                           ((u32)op << 24) | ((u32)imm << 19) |
                            ((u32)offset << 5) | Rt.n;
   return assembled_instruction;
 
@@ -207,19 +219,19 @@ u32 assembleConditionalBranchImm(Fields *instruction) {
   }
 
   const u8 offset_size = 19;
-  i32 offset = label_pc - CONTEXT.pc + 4;
+  i32 offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
   if (!checkBounds(offset, offset_size)) {
     // error here
     return 0;
   }
-  if (offset < 0) {
-    offset |= BIT(offset_size);
-  }
   offset = GENMASK(offset_size) & offset;
-  u8 o = instructionIndex(CONDITIONAL_BRANCH_IMM, instruction->fields[0].value);
+  if (offset < 0) {
+    offset |= BIT(offset_size - 1);
+  }
 
-  assembled_instruction = ((u32)SOP_CONDITIONAL_BRANCH_IMM << 23) |
-                          ((u32)offset << 4) | (o << 3) | c;
+  u8 o = instructionIndex(CONDITIONAL_BRANCH_IMM, instruction->fields[0].value);
+  assembled_instruction = ((u32)SOP_CONDITIONAL_BRANCH_IMM << 24) |
+                          ((u32)offset << 5) | (o << 4) | c;
   return assembled_instruction;
 }
 
@@ -233,21 +245,20 @@ u32 assembleUnconditionalBranchImm(Fields *instruction) {
   }
 
   const u8 offset_size = 26;
-  i32 offset = label_pc - CONTEXT.pc + 4;
+  i32 offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
   if (!checkBounds(offset, offset_size)) {
     // error here
     return 0;
   }
-  if (offset < 0) {
-    offset |= BIT(offset_size);
-  }
+
   offset = GENMASK(offset_size) & offset;
+  if (offset < 0) {
+    offset |= BIT(offset_size - 1);
+  }
 
-
-  u8 o = instructionIndex(UNCONDITIONAL_BRANCH_IMM, instruction->fields[0].value);
-
+  u8 op = instructionIndex(UNCONDITIONAL_BRANCH_IMM, instruction->fields[0].value);
   assembled_instruction =
-      ((u32)o << 31) | ((u32)SOP_UNCONDITIONAL_BRANCH_IMM << 25) | offset;
+      ((u32)op << 31) | ((u32)SOP_UNCONDITIONAL_BRANCH_IMM << 26) | offset;
   return assembled_instruction;
 }
 
@@ -742,7 +753,7 @@ Signature decodeTokens(const Fields *instruction) {
             break;
           */
     default:
-      (void)NULL;
+      NULL;
     }
   }
 
@@ -780,12 +791,16 @@ u32 assemble(Fields *instruction) {
     break;
   case CONDITIONAL_BRANCH_IMM:
     i = assembleConditionalBranchImm(instruction);
+    break;
   case UNCONDITIONAL_BRANCH_IMM:
     i = assembleUnconditionalBranchImm(instruction);
+    break;
   case UNCONDITIONAL_BRANCH_REG:
     i = assembleUnconditionalBranchReg(instruction);
+    break;
   case COMPARE_BRANCH:
     i = assembleCompareBranch(instruction);
+    break;
   case TEST_BRANCH:
     i = assembleTestBranch(instruction);
     break;

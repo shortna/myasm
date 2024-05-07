@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 u8 collectLineOfTokens(FILE *src, Fields *f) {
   static Token LEFTOVER = {0};
 
@@ -22,24 +21,29 @@ u8 collectLineOfTokens(FILE *src, Fields *f) {
     f->n_fields = 0;
   }
 
-  ok = getToken(src, f->fields + f->n_fields);
-  while (ok && f->n_fields != FIELDS_MAX + 1) {
+  do {
+    ok = getToken(src, f->fields + f->n_fields);
+    if (!ok) {
+      break;
+    }
+
     switch (f->fields[f->n_fields].type) {
     case T_LABEL_DECLARATION:
-      f->n_fields--;
       break;
     case T_INSTRUCTION:
     case T_DIRECTIVE:
-      copyToken(&LEFTOVER, f->fields + f->n_fields);
-      goto done;
+      if (f->n_fields != 0) {
+        copyToken(&LEFTOVER, f->fields + f->n_fields);
+        goto done;
+      }
+      __attribute__((fallthrough));
     default:
       f->n_fields++;
     }
-    ok = getToken(src, f->fields + f->n_fields);
-  }
+  } while (ok && f->n_fields != FIELDS_MAX);
 
 done:
-  if (!ok) {
+  if (!ok && LEFTOVER.value) {
     free(LEFTOVER.value);
     LEFTOVER.value = NULL;
   }
@@ -64,7 +68,7 @@ void makeLabels(void) {
       pc += ARM_INSTRUCTION_SIZE;
       break;
     default:
-      (void)NULL;
+      NULL;
     }
   } while (res);
 
@@ -95,7 +99,7 @@ u8 makeAssemble(FILE *out) {
         break;
       }
     default:
-      (void)NULL;
+      NULL;
     }
   } while (ret);
 

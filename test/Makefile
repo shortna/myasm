@@ -15,7 +15,7 @@ all: test
 .SILENT: assemble_with_mine assemble_with_test
 
 assemble_with_mine: $(TEST_FILE)
-	make -C .. --no-print-directory 2> /dev/null
+	$(MAKE) -C .. --no-print-directory 2> /dev/null
 	$(MYASM) $^ -o $@
 	$(OBJCOPY) -O binary --only-section=.text $@ $(OUT_MINE)
 	rm $@

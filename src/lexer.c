@@ -99,17 +99,19 @@ u8 getToken(FILE *f, Token *t) {
         fseek(SRC, -1, SEEK_CUR);
         goto done;
       }
-      __attribute__((fallthrough));
-    case '.':
-      t->value[i] = ch;
-      i++;
+      t->value[i++] = ch;
       goto done;
-    default:
-      t->value[i] = ch;
-      i++;
-      if (i == t->capacity - 1) {
+    case '.':
+      if (i != 0) {
+        t->value[i++] = ch;
         goto done;
       }
+      __attribute__((fallthrough));
+    default:
+      if (i == t->capacity) {
+        goto done;
+      }
+      t->value[i++] = ch;
       break;
     }
   }

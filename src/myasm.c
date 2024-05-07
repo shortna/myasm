@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
     case '?':
       return EXIT_FAILURE;
     default:
-      (void)NULL;
+      NULL;
     }
   }
 
