@@ -16,6 +16,11 @@
 #define SOP_UNCONDITIONAL_BRANCH_REG (107) // (0b01101011)
 #define SOP_COMPARE_BRANCH (26)            // (0b00011010)
 #define SOP_TEST_BRANCH (27)               // (0b00011011)
+#define SOP_LDR_LITERAL (24)               // (0b00011000)
+#define SOP_LDR_STR_IMM_POST_IND (56       // (0b00111000)
+#define SOP_LDR_STR_IMM_PRE_IND (56)       // (0b00111000)
+#define SOP_LDR_STR_REG_OFFSET (56)        // (0b00111000)
+#define SOP_LDR_STR_UIMM (57)              // (0b00111001)
 
 #define BIT(p) (1ull << (p))
 #define GENMASK(x) ((1ull << (x)) - 1ull)
