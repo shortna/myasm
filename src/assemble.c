@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-u8 collectLineOfTokens(FILE *src, Fields *f) {
+u8 collectLineOfTokens(Fields *f) {
   static Token LEFTOVER = {0};
 
   u8 ok;
@@ -22,7 +22,7 @@ u8 collectLineOfTokens(FILE *src, Fields *f) {
   }
 
   do {
-    ok = getToken(src, f->fields + f->n_fields);
+    ok = getToken(CONTEXT.cur_src, f->fields + f->n_fields);
     if (!ok) {
       break;
     }
@@ -75,13 +75,13 @@ void makeLabels(void) {
   free(t.value);
 }
 
-u8 makeAssemble(FILE *out) {
+u8 makeAssemble(void) {
   Fields f = initFields(TOKEN_SIZE);
   u8 ret = 0;
-  fseek(out, ELF64_SIZE, SEEK_SET);
+  fseek(CONTEXT.out, ELF64_SIZE, SEEK_SET);
 
   do {
-    ret = collectLineOfTokens(CONTEXT.cur_src, &f);
+    ret = collectLineOfTokens(&f);
     switch (f.fields->type) {
     case T_INSTRUCTION: {
       u32 instruction = assemble(&f);
@@ -90,7 +90,7 @@ u8 makeAssemble(FILE *out) {
         break;
       }
       CONTEXT.pc += ARM_INSTRUCTION_SIZE;
-      fwrite(&instruction, sizeof(instruction), 1, out);
+      fwrite(&instruction, sizeof(instruction), 1, CONTEXT.out);
       break;
     }
     case T_DIRECTIVE:
@@ -120,6 +120,7 @@ u8 make(u8 n_sources, const char **sources, const char *out_name) {
             strerror(errno));
     return 0;
   }
+  CONTEXT.out = out;
 
   initSymbolTable();
   initShdrTable();
@@ -135,13 +136,13 @@ u8 make(u8 n_sources, const char **sources, const char *out_name) {
 
     makeLabels();
     fseek(CONTEXT.cur_src, 0, SEEK_SET);
-    makeAssemble(out);
+    makeAssemble();
     fclose(CONTEXT.cur_src);
   }
-  writeElf(out);
+  writeElf(CONTEXT.out);
 
   freeSymoblTable();
   freeShdrTable();
-  fclose(out);
+  fclose(CONTEXT.out);
   return 1;
 }

@@ -1,8 +1,10 @@
 #include "directives.h"
 #include "instructions.h"
+#include "parser.h"
 #include "tables.h"
 #include "types.h"
 #include <elf.h>
+#include <stdio.h>
 #include <string.h>
 
 u8 dGlobal(const Fields *f) {
@@ -73,7 +75,17 @@ u8 dSection(const Fields *f) {
   return 1;
 }
 
-const char *DIRECTIVES[] = {"global", "section"};
+u8 dInt(const Fields *f) {
+  u32 n;
+  if (!parseImmediateU32(f->fields[1].value, &n)) {
+    return 0;
+  }
+
+  fwrite(&n, sizeof(n), 1, CONTEXT.out);
+  return 1;
+}
+
+static const char *DIRECTIVES[] = {"global", "section", "int"};
 
 i8 searchDirective(const char *name) {
   for (size_t i = 0; i < sizeof(DIRECTIVES) / sizeof(*DIRECTIVES); i++) {
@@ -90,12 +102,16 @@ u8 execDirective(Fields *f) {
 
   switch (n) {
   case -1:
+    // error here
     break;
   case 0:
     res = dGlobal(f);
     break;
   case 1:
     res = dSection(f);
+    break;
+  case 2:
+    res = dInt(f);
     break;
   }
 
