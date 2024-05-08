@@ -3,6 +3,7 @@
 
 #include "myasm.h"
 #define TOKEN_SIZE (40)
+#define FIELDS_MAX (10)
 
 typedef u32 ArmInstruction;
 
@@ -36,7 +37,6 @@ typedef struct Token {
   char *value;
 } Token;
 
-#define FIELDS_MAX (10)
 typedef struct Fields {
   Token fields[FIELDS_MAX];
   u8 n_fields;

@@ -58,8 +58,7 @@ static const Instruction INSTRUCTIONS[] = {
     {{"strb", "ldrb", "ldrsb"}, LDR_STR_REG_SHIFT, {4, REGISTER, REGISTER | SP, REGISTER, SHIFT | OPTIONAL}},
     {{"strb", "ldrb", "ldrsb"}, LDR_STR_REG_EXTEND, {4, REGISTER, REGISTER | SP, REGISTER, EXTEND}},
     {{"strh", "ldrh", "ldrhs", "str", "ldr", "ldrsw"}, LDR_STR_REG, {4, REGISTER, REGISTER | SP, REGISTER, EXTEND | OPTIONAL}},
-    {{"strb", "ldrb", "ldrsb", "str", "ldr", "strh", "ldrh", "ldrsh", "ldrsw"}, LDR_STR_IMM, {3, REGISTER, REGISTER | SP, IMMEDIATE}},
-    {{"strb", "ldrb", "ldrsb", "str", "ldr", "strh", "ldrh", "ldrsh", "ldrsw"}, LDR_STR_UIMM, {3, REGISTER, REGISTER | SP, IMMEDIATE | OPTIONAL}},
+    {{"strb", "ldrb", "ldrsb", "str", "ldr", "strh", "ldrh", "ldrsh", "ldrsw"}, LDR_STR_IMM, {3, REGISTER, REGISTER | SP, IMMEDIATE | OPTIONAL}},
 };
 
 u8 searchMnemonic(const char *mnemonic) {
@@ -106,7 +105,6 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {(void)instruction; 
 ArmInstruction assembleLdrStrRegShift(const Fields *instruction) {(void)instruction; return 0;}
 ArmInstruction assembleLdrStrRegExtend(const Fields *instruction) {(void)instruction; return 0;}
 ArmInstruction assembleLdrStrImm(const Fields *instruction) {(void)instruction; return 0;}
-ArmInstruction assembleLdrStrUimm(const Fields *instruction) {(void)instruction; return 0;}
 
 ArmInstruction assembleUnconditionalBranchReg(const Fields *instruction) {
   ArmInstruction assembled = 0;
@@ -823,9 +821,6 @@ ArmInstruction assemble(const Fields *instruction) {
     break;
   case LDR_STR_REG_EXTEND:
     i = assembleLdrStrRegExtend(instruction);
-    break;
-  case LDR_STR_UIMM:
-    i = assembleLdrStrUimm(instruction);
     break;
   case LDR_STR_IMM:
     i = assembleLdrStrImm(instruction);

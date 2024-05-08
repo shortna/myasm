@@ -52,7 +52,6 @@ typedef enum InstructionType {
   LDR_STR_REG,
   LDR_STR_REG_SHIFT,
   LDR_STR_REG_EXTEND,
-  LDR_STR_UIMM,
   LDR_STR_IMM,
 } InstructionType;
 
