@@ -1,25 +1,25 @@
 #include "instructions.h"
+#include "parser.h"
 #include "tables.h"
 #include "types.h"
-#include "parser.h"
 #include <string.h>
 
 // Static opcodes
-#define SOP_LOGICAL_IMM (36)               // (0b00100100)
-#define SOP_LOGICAL_SH_REG (10)            // (0b00001010)
-#define SOP_MOVE_WIDE (37)                 // (0b00100101)
-#define SOP_ADD_SUB_IMM (34)               // (0b00100010)
-#define SOP_PC_REl (16)                    // (0b00010000)
-#define SOP_EXCEPTIONS (212)               // (0b11010100)
-#define SOP_CONDITIONAL_BRANCH_IMM (84)    // (0b01010100)
-#define SOP_UNCONDITIONAL_BRANCH_IMM (5)   // (0b00000101)
-#define SOP_UNCONDITIONAL_BRANCH_REG (107) // (0b01101011)
-#define SOP_COMPARE_BRANCH (26)            // (0b00011010)
-#define SOP_TEST_BRANCH (27)               // (0b00011011)
-#define SOP_LDR_LITERAL (24)               // (0b00011000)
-#define SOP_LDR_STR_REG (56)               // (0b00111000)
-#define SOP_LDR_STR_UIMM (57)              // (0b00111001)
-#define SOP_LDR_STR_IMM (56)      // (0b00111000)
+#define SOP_LOGICAL_IMM ((short)36)               // (0b00100100)
+#define SOP_LOGICAL_SH_REG ((short)10)            // (0b00001010)
+#define SOP_MOVE_WIDE ((short)37)                 // (0b00100101)
+#define SOP_ADD_SUB_IMM ((short)34)               // (0b00100010)
+#define SOP_PC_REl ((short)16)                    // (0b00010000)
+#define SOP_EXCEPTIONS ((short)212)               // (0b11010100)
+#define SOP_CONDITIONAL_BRANCH_IMM ((short)84)    // (0b01010100)
+#define SOP_UNCONDITIONAL_BRANCH_IMM ((short)5)   // (0b00000101)
+#define SOP_UNCONDITIONAL_BRANCH_REG ((short)107) // (0b01101011)
+#define SOP_COMPARE_BRANCH ((short)26)            // (0b00011010)
+#define SOP_TEST_BRANCH ((short)27)               // (0b00011011)
+#define SOP_LDR_LITERAL ((short)24)               // (0b00011000)
+#define SOP_LDR_STR_REG ((short)56)               // (0b00111000)
+#define SOP_LDR_STR_IMM ((short)56)               // (0b00111000)
+#define SOP_LDR_STR_UIMM ((short)57)              // (0b00111001)
 
 #define BIT(p) (1ull << (p))
 #define GENMASK(x) ((1ull << (x)) - 1ull)
@@ -27,8 +27,8 @@
 #ifdef DEBUG
 #include <stdio.h>
 void printBinary(u32 n) {
-  for (u8 i = 0; i < sizeof(n) * 8 - 1; i++) {
-    printf("%d", (n & (BIT(sizeof(n) * 8 - 1) >> i)) ? 1 : 0);
+  for (u8 i = 0; i < ARM_INSTRUCTION_SIZE * 8 - 1; i++) {
+    printf("%d", (n & (BIT(ARM_INSTRUCTION_SIZE * 8 - 1) >> i)) ? 1 : 0);
   }
   printf("\n");
 }
@@ -101,15 +101,15 @@ u8 checkBounds(i64 n, u8 size) {
   return n < mask;
 }
 
-u32 assembleLdrLiteral(const Fields *instruction) {}
-u32 assembleLdrStrReg(const Fields *instruction) {}
-u32 assembleLdrStrRegShift(const Fields *instruction) {}
-u32 assembleLdrStrRegExtend(const Fields *instruction) {}
-u32 assembleLdrStrImm(const Fields *instruction) {}
-u32 assembleLdrStrUimm(const Fields *instruction) {}
+ArmInstruction assembleLdrLiteral(const Fields *instruction) {(void)instruction; return 0;}
+ArmInstruction assembleLdrStrReg(const Fields *instruction) {(void)instruction; return 0;}
+ArmInstruction assembleLdrStrRegShift(const Fields *instruction) {(void)instruction; return 0;}
+ArmInstruction assembleLdrStrRegExtend(const Fields *instruction) {(void)instruction; return 0;}
+ArmInstruction assembleLdrStrImm(const Fields *instruction) {(void)instruction; return 0;}
+ArmInstruction assembleLdrStrUimm(const Fields *instruction) {(void)instruction; return 0;}
 
-u32 assembleUnconditionalBranchReg(const Fields *instruction) {
-  u32 assembled_instruction = 0;
+ArmInstruction assembleUnconditionalBranchReg(const Fields *instruction) {
+  ArmInstruction assembled = 0;
   Register Rn = {0};
 
   u8 op = instructionIndex(UNCONDITIONAL_BRANCH_REG, instruction->fields[0].value);
@@ -135,14 +135,14 @@ u32 assembleUnconditionalBranchReg(const Fields *instruction) {
   const u8 Z = 0;
   const u16 op2 = 0xf80;
 
-  assembled_instruction |= ((u32)SOP_UNCONDITIONAL_BRANCH_REG << 25) |
+  assembled |= ((u32)SOP_UNCONDITIONAL_BRANCH_REG << 25) |
                            ((u32)Z << 24) | ((u32)op << 21) | ((u32)op2 << 9) |
                            ((u32)Rn.n << 5) | 0;
-  return assembled_instruction;
+  return assembled;
 }
 
-u32 assembleCompareBranch(const Fields *instruction) {
-  u32 assembled_instruction = 0;
+ArmInstruction assembleCompareBranch(const Fields *instruction) {
+  ArmInstruction assembled = 0;
   Register Rt;
 
   if (!parseRegister(instruction->fields[1].value, &Rt)) {
@@ -170,13 +170,13 @@ u32 assembleCompareBranch(const Fields *instruction) {
   }
 
   u8 op = instructionIndex(COMPARE_BRANCH, instruction->fields[0].value);
-  assembled_instruction |= ((u32)sf << 31) | ((u32)SOP_COMPARE_BRANCH << 25) |
+  assembled |= ((u32)sf << 31) | ((u32)SOP_COMPARE_BRANCH << 25) |
                            ((u32)op << 24) | ((u32)offset << 5) | Rt.n;
-  return assembled_instruction;
+  return assembled;
 }
 
-u32 assembleTestBranch(const Fields *instruction) {
-  u32 assembled_instruction = 0;
+ArmInstruction assembleTestBranch(const Fields *instruction) {
+  ArmInstruction assembled = 0;
   Register Rt;
 
   if (!parseRegister(instruction->fields[1].value, &Rt)) {
@@ -215,15 +215,15 @@ u32 assembleTestBranch(const Fields *instruction) {
   }
 
   u8 op = instructionIndex(TEST_BRANCH, instruction->fields[0].value);
-  assembled_instruction |= ((u32)sf << 31) | ((u32)SOP_TEST_BRANCH << 25) |
+  assembled |= ((u32)sf << 31) | ((u32)SOP_TEST_BRANCH << 25) |
                            ((u32)op << 24) | ((u32)imm << 19) |
                            ((u32)offset << 5) | Rt.n;
-  return assembled_instruction;
+  return assembled;
 
 }
 
-u32 assembleConditionalBranchImm(const Fields *instruction) {
-  u32 assembled_instruction = 0;
+ArmInstruction assembleConditionalBranchImm(const Fields *instruction) {
+  ArmInstruction assembled = 0;
   ConditionType c = 0;
   if (!parseCondition(instruction->fields[1].value, &c)) {
     // error here
@@ -248,13 +248,13 @@ u32 assembleConditionalBranchImm(const Fields *instruction) {
   }
 
   u8 o = instructionIndex(CONDITIONAL_BRANCH_IMM, instruction->fields[0].value);
-  assembled_instruction = ((u32)SOP_CONDITIONAL_BRANCH_IMM << 24) |
+  assembled = ((u32)SOP_CONDITIONAL_BRANCH_IMM << 24) |
                           ((u32)offset << 5) | (o << 4) | c;
-  return assembled_instruction;
+  return assembled;
 }
 
-u32 assembleUnconditionalBranchImm(const Fields *instruction) {
-  u32 assembled_instruction = 0;
+ArmInstruction assembleUnconditionalBranchImm(const Fields *instruction) {
+  ArmInstruction assembled = 0;
 
   ssize_t label_pc = getLabelPc(instruction->fields[1].value);
   if (label_pc == -1) {
@@ -275,13 +275,13 @@ u32 assembleUnconditionalBranchImm(const Fields *instruction) {
   }
 
   u8 op = instructionIndex(UNCONDITIONAL_BRANCH_IMM, instruction->fields[0].value);
-  assembled_instruction =
+  assembled =
       ((u32)op << 31) | ((u32)SOP_UNCONDITIONAL_BRANCH_IMM << 26) | offset;
-  return assembled_instruction;
+  return assembled;
 }
 
-u32 assemblePcRelAddressing(const Fields *instruction) {
-  u32 assembled_instruction = 0;
+ArmInstruction assemblePcRelAddressing(const Fields *instruction) {
+  ArmInstruction assembled = 0;
   Register Rd;
 
   if (!parseRegister(instruction->fields[1].value, &Rd)) {
@@ -300,8 +300,8 @@ u32 assemblePcRelAddressing(const Fields *instruction) {
     return 0;
   }
 
-  assembled_instruction |= 0;
-  return assembled_instruction;
+  assembled |= 0;
+  return assembled;
 }
 
 // SHAMELESSLY STOLEN FROM LLVM
@@ -376,8 +376,8 @@ bool encodeBitmaskImmediate(u64 imm, u64 *encoding, bool extended) {
   return true;
 }
 
-u32 assembleLogicalImm(const Fields *instruction) {
-  u32 assembled_instruction = 0;
+ArmInstruction assembleLogicalImm(const Fields *instruction) {
+  ArmInstruction assembled = 0;
 
   Register Rd;
   Register Rn;
@@ -413,19 +413,14 @@ u32 assembleLogicalImm(const Fields *instruction) {
 
   u8 opc = instructionIndex(LOGICAL_IMM, instruction->fields[0].value);
 
-  assembled_instruction |= ((u32)sf << 31) | ((u32)opc << 29) |
+  assembled |= ((u32)sf << 31) | ((u32)opc << 29) |
                            ((u32)SOP_LOGICAL_IMM << 23) | (encoding << 10) |
                            ((u32)Rn.n << 5) | Rd.n;
-  return assembled_instruction;
+  return assembled;
 }
 
-u32 assembleLogicalShReg(const Fields *instruction) {
-  if (instruction->n_fields != 4 && instruction->n_fields != 6) {
-    // error here
-    return 0;
-  }
-
-  u32 assembled_instruction = 0;
+ArmInstruction assembleLogicalShReg(const Fields *instruction) {
+  ArmInstruction assembled = 0;
 
   Register Rd;
   Register Rn;
@@ -479,16 +474,16 @@ u32 assembleLogicalShReg(const Fields *instruction) {
   u8 N = opc & 1;
   opc = opc >> 1;
 
-  assembled_instruction |= ((u32)sf << 31) | ((u32)opc << 29) |
+  assembled |= ((u32)sf << 31) | ((u32)opc << 29) |
                            ((u32)SOP_LOGICAL_SH_REG << 24) | ((u32)t << 22) |
                            ((u32)N << 21) | ((u32)Rm.n << 16) |
                            ((u32)sh_imm << 10) | ((u32)Rn.n << 5) | Rd.n;
 
-  return assembled_instruction;
+  return assembled;
 }
 
-u32 assembleMoveWide(const Fields *instruction) {
-  u32 assembled_instruction = 0;
+ArmInstruction assembleMoveWide(const Fields *instruction) {
+  ArmInstruction assembled = 0;
 
   Register Rd;
   if (!parseRegister(instruction->fields[1].value, &Rd)) {
@@ -538,20 +533,15 @@ u32 assembleMoveWide(const Fields *instruction) {
 
   u8 hw = sh_imm / 16;
 
-  assembled_instruction |= ((u32)sf << 31) | ((u32)opc << 29) |
+  assembled |= ((u32)sf << 31) | ((u32)opc << 29) |
                            ((u32)SOP_MOVE_WIDE << 23) | ((u32)hw << 21) |
                            ((u32)imm << 5) | Rd.n;
 
-  return assembled_instruction;
+  return assembled;
 }
 
-u32 assembleAddSubImm(const Fields *instruction) {
-  if (instruction->n_fields != 4 && instruction->n_fields != 6) {
-    // error here
-    return 0;
-  }
-
-  u32 assembled_instruction = 0;
+ArmInstruction assembleAddSubImm(const Fields *instruction) {
+  ArmInstruction assembled = 0;
 
   Register Rd;
   Register Rn;
@@ -607,16 +597,16 @@ u32 assembleAddSubImm(const Fields *instruction) {
 
   bool sh = sh_imm == 12;
 
-  assembled_instruction |= ((u32)sf << 31) | ((u32)op << 30) |
+  assembled |= ((u32)sf << 31) | ((u32)op << 30) |
                            ((u32)S << 29) | ((u32)SOP_ADD_SUB_IMM << 23) |
                            ((u32)sh << 22) | ((u32)imm << 10) |
                            ((u32)Rn.n << 5) | Rd.n;
 
-  return assembled_instruction;
+  return assembled;
 }
 
-u32 assembleException(const Fields *instruction) {
-  u32 assembled_instruction = 0;
+ArmInstruction assembleException(const Fields *instruction) {
+  ArmInstruction assembled = 0;
 
   u8 LL = instructionIndex(EXCEPTION, instruction->fields[0].value) + 1;
   u8 opc = 5; // 0b101
@@ -651,10 +641,10 @@ u32 assembleException(const Fields *instruction) {
     }
   }
 
-  assembled_instruction |= ((u32)SOP_EXCEPTIONS << 24u) | ((u32)opc << 21u) |
+  assembled |= ((u32)SOP_EXCEPTIONS << 24u) | ((u32)opc << 21u) |
                            ((u32)imm << 5u) | (0 << 2u) | LL;
 
-  return assembled_instruction;
+  return assembled;
 }
 
 u8 compareSignatures(const Signature *s1, const Signature *s2) {
@@ -779,7 +769,7 @@ Signature decodeTokens(const Fields *instruction) {
   return s;
 }
 
-u32 assemble(const Fields *instruction) {
+ArmInstruction assemble(const Fields *instruction) {
   if (!instruction || instruction->n_fields == 0) { // sanity check
     return 0;
   }

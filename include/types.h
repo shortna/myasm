@@ -4,6 +4,8 @@
 #include "myasm.h"
 #define TOKEN_SIZE (40)
 
+typedef u32 ArmInstruction;
+
 typedef enum {
   T_NONE,
 
