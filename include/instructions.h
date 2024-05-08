@@ -8,7 +8,7 @@
 struct Fields;
 typedef struct Fields Fields;
 
-u32 assemble(Fields *instruction);
+u32 assemble(const Fields *instruction);
 u8 searchMnemonic(const char *mnemonic);
 
 typedef enum {
@@ -48,7 +48,12 @@ typedef enum InstructionType {
   UNCONDITIONAL_BRANCH_REG,
   COMPARE_BRANCH,
   TEST_BRANCH,
-
+  LDR_LITERAL,
+  LDR_STR_REG,
+  LDR_STR_REG_SHIFT,
+  LDR_STR_REG_EXTEND,
+  LDR_STR_UIMM,
+  LDR_STR_IMM,
 } InstructionType;
 
 typedef struct Instruction {

@@ -17,10 +17,9 @@
 #define SOP_COMPARE_BRANCH (26)            // (0b00011010)
 #define SOP_TEST_BRANCH (27)               // (0b00011011)
 #define SOP_LDR_LITERAL (24)               // (0b00011000)
-#define SOP_LDR_STR_IMM_POST_IND (56       // (0b00111000)
-#define SOP_LDR_STR_IMM_PRE_IND (56)       // (0b00111000)
-#define SOP_LDR_STR_REG_OFFSET (56)        // (0b00111000)
+#define SOP_LDR_STR_REG (56)               // (0b00111000)
 #define SOP_LDR_STR_UIMM (57)              // (0b00111001)
+#define SOP_LDR_STR_IMM (56)      // (0b00111000)
 
 #define BIT(p) (1ull << (p))
 #define GENMASK(x) ((1ull << (x)) - 1ull)
@@ -54,6 +53,13 @@ static const Instruction INSTRUCTIONS[] = {
     {{"br", "blr", "ret"}, UNCONDITIONAL_BRANCH_REG, {1, REGISTER | OPTIONAL}},
     {{"cbz", "cbnz"}, COMPARE_BRANCH, {2, REGISTER, LABEL}},
     {{"tbz", "tbnz"}, TEST_BRANCH, {3, REGISTER, IMMEDIATE, LABEL}},
+
+    {{"ldr", "ldrsw"}, LDR_LITERAL, {2, REGISTER, LABEL}},
+    {{"strb", "ldrb", "ldrsb"}, LDR_STR_REG_SHIFT, {4, REGISTER, REGISTER | SP, REGISTER, SHIFT | OPTIONAL}},
+    {{"strb", "ldrb", "ldrsb"}, LDR_STR_REG_EXTEND, {4, REGISTER, REGISTER | SP, REGISTER, EXTEND}},
+    {{"strh", "ldrh", "ldrhs", "str", "ldr", "ldrsw"}, LDR_STR_REG, {4, REGISTER, REGISTER | SP, REGISTER, EXTEND | OPTIONAL}},
+    {{"strb", "ldrb", "ldrsb", "str", "ldr", "strh", "ldrh", "ldrsh", "ldrsw"}, LDR_STR_IMM, {3, REGISTER, REGISTER | SP, IMMEDIATE}},
+    {{"strb", "ldrb", "ldrsb", "str", "ldr", "strh", "ldrh", "ldrsh", "ldrsw"}, LDR_STR_UIMM, {3, REGISTER, REGISTER | SP, IMMEDIATE | OPTIONAL}},
 };
 
 u8 searchMnemonic(const char *mnemonic) {
@@ -95,7 +101,14 @@ u8 checkBounds(i64 n, u8 size) {
   return n < mask;
 }
 
-u32 assembleUnconditionalBranchReg(Fields *instruction) {
+u32 assembleLdrLiteral(const Fields *instruction) {}
+u32 assembleLdrStrReg(const Fields *instruction) {}
+u32 assembleLdrStrRegShift(const Fields *instruction) {}
+u32 assembleLdrStrRegExtend(const Fields *instruction) {}
+u32 assembleLdrStrImm(const Fields *instruction) {}
+u32 assembleLdrStrUimm(const Fields *instruction) {}
+
+u32 assembleUnconditionalBranchReg(const Fields *instruction) {
   u32 assembled_instruction = 0;
   Register Rn = {0};
 
@@ -128,7 +141,7 @@ u32 assembleUnconditionalBranchReg(Fields *instruction) {
   return assembled_instruction;
 }
 
-u32 assembleCompareBranch(Fields *instruction) {
+u32 assembleCompareBranch(const Fields *instruction) {
   u32 assembled_instruction = 0;
   Register Rt;
 
@@ -162,7 +175,7 @@ u32 assembleCompareBranch(Fields *instruction) {
   return assembled_instruction;
 }
 
-u32 assembleTestBranch(Fields *instruction) {
+u32 assembleTestBranch(const Fields *instruction) {
   u32 assembled_instruction = 0;
   Register Rt;
 
@@ -209,7 +222,7 @@ u32 assembleTestBranch(Fields *instruction) {
 
 }
 
-u32 assembleConditionalBranchImm(Fields *instruction) {
+u32 assembleConditionalBranchImm(const Fields *instruction) {
   u32 assembled_instruction = 0;
   ConditionType c = 0;
   if (!parseCondition(instruction->fields[1].value, &c)) {
@@ -240,7 +253,7 @@ u32 assembleConditionalBranchImm(Fields *instruction) {
   return assembled_instruction;
 }
 
-u32 assembleUnconditionalBranchImm(Fields *instruction) {
+u32 assembleUnconditionalBranchImm(const Fields *instruction) {
   u32 assembled_instruction = 0;
 
   ssize_t label_pc = getLabelPc(instruction->fields[1].value);
@@ -267,7 +280,7 @@ u32 assembleUnconditionalBranchImm(Fields *instruction) {
   return assembled_instruction;
 }
 
-u32 assemblePcRelAddressing(Fields *instruction) {
+u32 assemblePcRelAddressing(const Fields *instruction) {
   u32 assembled_instruction = 0;
   Register Rd;
 
@@ -363,7 +376,7 @@ bool encodeBitmaskImmediate(u64 imm, u64 *encoding, bool extended) {
   return true;
 }
 
-u32 assembleLogicalImm(Fields *instruction) {
+u32 assembleLogicalImm(const Fields *instruction) {
   u32 assembled_instruction = 0;
 
   Register Rd;
@@ -406,7 +419,7 @@ u32 assembleLogicalImm(Fields *instruction) {
   return assembled_instruction;
 }
 
-u32 assembleLogicalShReg(Fields *instruction) {
+u32 assembleLogicalShReg(const Fields *instruction) {
   if (instruction->n_fields != 4 && instruction->n_fields != 6) {
     // error here
     return 0;
@@ -474,7 +487,7 @@ u32 assembleLogicalShReg(Fields *instruction) {
   return assembled_instruction;
 }
 
-u32 assembleMoveWide(Fields *instruction) {
+u32 assembleMoveWide(const Fields *instruction) {
   u32 assembled_instruction = 0;
 
   Register Rd;
@@ -532,7 +545,7 @@ u32 assembleMoveWide(Fields *instruction) {
   return assembled_instruction;
 }
 
-u32 assembleAddSubImm(Fields *instruction) {
+u32 assembleAddSubImm(const Fields *instruction) {
   if (instruction->n_fields != 4 && instruction->n_fields != 6) {
     // error here
     return 0;
@@ -602,7 +615,7 @@ u32 assembleAddSubImm(Fields *instruction) {
   return assembled_instruction;
 }
 
-u32 assembleException(Fields *instruction) {
+u32 assembleException(const Fields *instruction) {
   u32 assembled_instruction = 0;
 
   u8 LL = instructionIndex(EXCEPTION, instruction->fields[0].value) + 1;
@@ -766,7 +779,7 @@ Signature decodeTokens(const Fields *instruction) {
   return s;
 }
 
-u32 assemble(Fields *instruction) {
+u32 assemble(const Fields *instruction) {
   if (!instruction || instruction->n_fields == 0) { // sanity check
     return 0;
   }
@@ -808,6 +821,24 @@ u32 assemble(Fields *instruction) {
     break;
   case TEST_BRANCH:
     i = assembleTestBranch(instruction);
+    break;
+  case LDR_LITERAL:
+    i = assembleLdrLiteral(instruction);
+    break;
+  case LDR_STR_REG:
+    i = assembleLdrStrReg(instruction);
+    break;
+  case LDR_STR_REG_SHIFT:
+    i = assembleLdrStrRegShift(instruction);
+    break;
+  case LDR_STR_REG_EXTEND:
+    i = assembleLdrStrRegExtend(instruction);
+    break;
+  case LDR_STR_UIMM:
+    i = assembleLdrStrUimm(instruction);
+    break;
+  case LDR_STR_IMM:
+    i = assembleLdrStrImm(instruction);
     break;
   case NONE:
     // error here
