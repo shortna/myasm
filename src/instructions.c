@@ -34,8 +34,11 @@ void printBinary(u32 n) {
 }
 #endif
 
+#ifdef __clang__
 #pragma clang diagnostic ignored "-Wmissing-field-initializers"
+#elif defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#endif 
 // IMPORTANT
 // instruction mnemonic MUST be in order of incresing opc field
 static const Instruction INSTRUCTIONS[] = {
@@ -55,9 +58,7 @@ static const Instruction INSTRUCTIONS[] = {
     {{"tbz", "tbnz"}, TEST_BRANCH, {3, REGISTER, IMMEDIATE, LABEL}},
 
     {{"ldr", "ldrsw"}, LDR_LITERAL, {2, REGISTER, LABEL}},
-    {{"strb", "ldrb", "ldrsb"}, LDR_STR_REG_SHIFT, {4, REGISTER, REGISTER | SP, REGISTER, SHIFT | OPTIONAL}},
-    {{"strb", "ldrb", "ldrsb"}, LDR_STR_REG_EXTEND, {4, REGISTER, REGISTER | SP, REGISTER, EXTEND}},
-    {{"strh", "ldrh", "ldrhs", "str", "ldr", "ldrsw"}, LDR_STR_REG, {4, REGISTER, REGISTER | SP, REGISTER, EXTEND | OPTIONAL}},
+    {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrhs", "str", "ldr", "ldrsw"}, LDR_STR_REG, {4, REGISTER, REGISTER | SP, REGISTER, EXTEND | SHIFT | OPTIONAL}},
     {{"strb", "ldrb", "ldrsb", "str", "ldr", "strh", "ldrh", "ldrsh", "ldrsw"}, LDR_STR_IMM, {3, REGISTER, REGISTER | SP, IMMEDIATE | OPTIONAL}},
 };
 
@@ -100,10 +101,47 @@ u8 checkBounds(i64 n, u8 size) {
   return n < mask;
 }
 
-ArmInstruction assembleLdrLiteral(const Fields *instruction) {(void)instruction; return 0;}
+ArmInstruction assembleLdrLiteral(const Fields *instruction) {
+  ArmInstruction assembled = 0;
+  Register Rt = {0};
+
+  if (!parseRegister(instruction->fields[1].value, &Rt)) {
+    // error here
+    return 0;
+  }
+
+  u8 opc = instructionIndex(LDR_LITERAL, instruction->fields->value) + 1;
+  if (!Rt.extended && opc == 2) {
+    // error here
+    return 0;
+  }
+  if (!Rt.extended && opc == 1) {
+    opc = 0;
+  }
+
+  ssize_t label_pc = getLabelPc(instruction->fields[2].value);
+  if (label_pc == -1) {
+    // error here
+    return 0;
+  }
+
+  const u8 offset_size = 19;
+  i32 offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
+  if (!checkBounds(offset, offset_size)) {
+    // error here
+    return 0;
+  }
+  offset = GENMASK(offset_size) & offset;
+  if (offset < 0) {
+    offset |= BIT(offset_size - 1);
+  }
+
+  assembled =
+      ((u32)opc << 30) | ((u32)SOP_LDR_LITERAL << 24) | (offset << 5) | Rt.n;
+  return assembled;
+}
+
 ArmInstruction assembleLdrStrReg(const Fields *instruction) {(void)instruction; return 0;}
-ArmInstruction assembleLdrStrRegShift(const Fields *instruction) {(void)instruction; return 0;}
-ArmInstruction assembleLdrStrRegExtend(const Fields *instruction) {(void)instruction; return 0;}
 ArmInstruction assembleLdrStrImm(const Fields *instruction) {(void)instruction; return 0;}
 
 ArmInstruction assembleUnconditionalBranchReg(const Fields *instruction) {
@@ -678,19 +716,20 @@ InstructionType getInstructionType(const char *mnemonic, Signature *s) {
 Signature decodeTokens(const Fields *instruction) {
   Signature s = {0};
   Argument *s_arr = ((Argument *)&s);
+  u8 i = 1, n = 1;
 
-  for (u8 i = 1; i < instruction->n_fields; i++) {
+  while (i < instruction->n_fields) {
     switch (instruction->fields[i].type) {
     case T_REGISTER: {
       Register r;
       parseRegister(instruction->fields[i].value, &r);
       if (r.n == REGISTER_ZR_SP) {
         if (strcmp(instruction->fields[i].value + 1, "zr") != 0) {
-          s_arr[i] = SP;
+          s_arr[n] = SP;
           break;
         }
       }
-      s_arr[i] = REGISTER;
+      s_arr[n] = REGISTER;
       break;
     }
     case T_LABEL:
@@ -698,31 +737,40 @@ Signature decodeTokens(const Fields *instruction) {
         // error here
         break;
       }
-      s_arr[i] = LABEL;
+      s_arr[n] = LABEL;
       break;
     case T_IMMEDIATE:
-      s_arr[i] = IMMEDIATE;
+      s_arr[n] = IMMEDIATE;
       break;
     case T_SHIFT:
       if (i + 1 < instruction->n_fields &&
           instruction->fields[i + 1].type == T_IMMEDIATE) {
-        s_arr[i] = SHIFT;
+        s_arr[n] = SHIFT;
         break;
       }
       // error here (shift without parameter)
       break;
     case T_EXTEND:
-      s_arr[i] = EXTEND;
+      s_arr[n] = EXTEND;
       break;
     case T_CONDITION:
-      s_arr[i] = CONDITION;
+      s_arr[n] = CONDITION;
+      break;
+    case T_RSBRACE:
+    case T_LSBRACE:
+    case T_MINUS:
+    case T_PLUS:
+    case T_BANG:
+      n--;
       break;
     default:
       NULL;
     }
+    i++;
+    n++;
   }
 
-  s.n_args = instruction->n_fields - 1;
+  s.n_args = n;
   return s;
 }
 
@@ -733,8 +781,9 @@ ArmInstruction assemble(const Fields *instruction) {
 
   Signature s = decodeTokens(instruction);
   InstructionType it = getInstructionType(instruction->fields->value, &s);
+  printf("%s - %d\n", instruction->fields->value, it);
 
-  u32 i = 0;
+  ArmInstruction i = 0;
   switch (it) {
   case LOGICAL_IMM:
     i = assembleLogicalImm(instruction);
@@ -774,12 +823,6 @@ ArmInstruction assemble(const Fields *instruction) {
     break;
   case LDR_STR_REG:
     i = assembleLdrStrReg(instruction);
-    break;
-  case LDR_STR_REG_SHIFT:
-    i = assembleLdrStrRegShift(instruction);
-    break;
-  case LDR_STR_REG_EXTEND:
-    i = assembleLdrStrRegExtend(instruction);
     break;
   case LDR_STR_IMM:
     i = assembleLdrStrImm(instruction);

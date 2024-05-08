@@ -10,6 +10,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef alloca
+#define alloca(size) __builtin_alloca(size)
+#endif
+
 u8 collectLineOfTokens(Fields *f) {
   static Token LEFTOVER = {0};
 

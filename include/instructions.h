@@ -50,8 +50,6 @@ typedef enum InstructionType {
   TEST_BRANCH,
   LDR_LITERAL,
   LDR_STR_REG,
-  LDR_STR_REG_SHIFT,
-  LDR_STR_REG_EXTEND,
   LDR_STR_IMM,
 } InstructionType;
 
@@ -60,6 +58,5 @@ typedef struct Instruction {
   const InstructionType type;
   const Signature s;
 } Instruction;
-
 
 #endif
