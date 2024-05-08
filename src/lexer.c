@@ -57,7 +57,6 @@ TokenType getTokenType(Token *t) {
     return T_SHIFT;
   }
 
-
   return T_LABEL;
 }
 

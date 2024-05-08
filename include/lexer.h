@@ -3,7 +3,7 @@
 
 #include "myasm.h"
 
-// forward declaration
+// forward declarations
 struct _IO_FILE;
 typedef struct _IO_FILE FILE;
 

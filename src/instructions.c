@@ -717,47 +717,6 @@ Signature decodeTokens(const Fields *instruction) {
     case T_CONDITION:
       s_arr[i] = CONDITION;
       break;
-
-      /*
-      #warning "replace strcat in future or check length before concatinating"
-          case T_RSBRACE:
-          case T_LSBRACE:
-            s_arr[i] = BRACKETS;
-            u8 j = i;
-            do {
-              j++;
-              strcat(instruction->fields[i].value,
-      instruction->fields[j].value); } while (j < instruction->n_fields &&
-                     instruction->fields[j].type != T_LSBRACE);
-
-            if (instruction->fields[j].type != T_LSBRACE) {
-              s_arr[i] = NONE;
-              // error here
-              break;
-            }
-
-            if (j + 1 < instruction->n_fields &&
-                instruction->fields[j + 1].type == T_BANG) {
-              strcat(instruction->fields[i].value, instruction->fields[j +
-      1].value);
-            }
-            break;
-
-          case T_PLUS:
-          case T_MINUS:
-            if (i + 1 < instruction->n_fields &&
-                instruction->fields[i + 1].type == T_IMMEDIATE) {
-              s_arr[i] = IMMEDIATE;
-              strcat(instruction->fields[i].value, instruction->fields[i +
-      1].value); break;
-            }
-            // error here (sign without parameter)
-            break;
-
-          case T_DOLLAR:
-      #warning "figure out dollar"
-            break;
-          */
     default:
       NULL;
     }
