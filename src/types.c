@@ -39,4 +39,7 @@ void copyToken(Token *dst, const Token *src) {
   strcpy(dst->value, src->value);
 }
 
-
+void reszieToken(Token *t) {
+  t->capacity *= 2;
+  t->value = xrealloc(t->value, t->capacity * sizeof(*t->value));
+}

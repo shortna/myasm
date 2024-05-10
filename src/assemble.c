@@ -59,9 +59,7 @@ void makeLabels(void) {
   Token t = initToken(TOKEN_SIZE);
 
   size_t pc = 0;
-  u8 res = 0;
-  do {
-    res = getToken(CONTEXT.cur_src, &t);
+  while (getToken(CONTEXT.cur_src, &t)) {
     switch (t.type) {
     case T_LABEL_DECLARATION:
       if (!addToSym(t.value, pc, 0, ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE))) {
@@ -71,10 +69,12 @@ void makeLabels(void) {
     case T_INSTRUCTION:
       pc += ARM_INSTRUCTION_SIZE;
       break;
+    case T_DIRECTIVE:
+      pc += 0; // fix this
     default:
       NULL;
     }
-  } while (res);
+  }
 
   free(t.value);
 }

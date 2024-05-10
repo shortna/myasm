@@ -112,5 +112,6 @@ u8 parseImmediateU64(const char *imm, u64 *res);
 u8 parseExtend(const char *extend, ExtendType *ex);
 u8 parseShift(const char *shift, ShiftType *sh);
 u8 parseCondition(const char *condition, ConditionType *c);
+u8 isString(const char *str);
 
 #endif

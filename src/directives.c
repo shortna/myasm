@@ -75,6 +75,28 @@ u8 dSection(const Fields *f) {
   return 1;
 }
 
+u8 dZero(const Fields *f) {
+  u64 n;
+  if (!parseImmediateU64(f->fields[1].value, &n)) {
+    return 0;
+  }
+
+  fwrite(0, sizeof(0), n, CONTEXT.out);
+  CONTEXT.pc += n * sizeof(0);
+  return 1;
+}
+
+u8 dByte(const Fields *f) { 
+  u8 n;
+  if (!parseImmediateU8(f->fields[1].value, &n)) {
+    return 0;
+  }
+
+  fwrite(&n, sizeof(n), 1, CONTEXT.out);
+  CONTEXT.pc += sizeof(n);
+  return 1;
+}
+
 u8 dInt(const Fields *f) {
   u32 n;
   if (!parseImmediateU32(f->fields[1].value, &n)) {
@@ -82,10 +104,35 @@ u8 dInt(const Fields *f) {
   }
 
   fwrite(&n, sizeof(n), 1, CONTEXT.out);
+  CONTEXT.pc += sizeof(n);
   return 1;
 }
 
-static const char *DIRECTIVES[] = {"global", "section", "int"};
+u8 dAscii(const Fields *f) { 
+  u64 len = 0;
+  const char *str = f->fields[1].value + 1; // skips first '"'
+  while (*str != '"') {
+    len++;
+  }
+
+  fwrite(str, len, 1, CONTEXT.out);
+  CONTEXT.pc += len * sizeof(char);
+  return 1;
+}
+
+u8 dAsciiz(const Fields *f) { 
+  if (!dAscii(f)) {
+    return 0;
+  }
+
+  fwrite(0, sizeof(char), 1, CONTEXT.out); // write '\0'
+  CONTEXT.pc += sizeof(char);
+  return 1;
+}
+
+static const char *DIRECTIVES[] = {
+    "global", "section", "byte", "int", "ascii", "asciiz", "zero",
+};
 
 i8 searchDirective(const char *name) {
   for (size_t i = 0; i < sizeof(DIRECTIVES) / sizeof(*DIRECTIVES); i++) {
@@ -111,7 +158,19 @@ u8 execDirective(Fields *f) {
     res = dSection(f);
     break;
   case 2:
+    res = dByte(f);
+    break;
+  case 3:
     res = dInt(f);
+    break;
+  case 4:
+    res = dAscii(f);
+    break;
+  case 5:
+    res = dAsciiz(f);
+    break;
+  case 6:
+    res = dZero(f);
     break;
   }
 

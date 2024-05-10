@@ -21,6 +21,7 @@ typedef enum {
   T_SHIFT,
   T_EXTEND,
   T_CONDITION,
+  T_STRING,
 
   // one symbol tokens
   T_PLUS,
@@ -28,7 +29,7 @@ typedef enum {
   T_RSBRACE,
   T_LSBRACE,
   T_BANG,
-  T_DOLLAR,
+  T_EQUAL,
 } TokenType;
 
 typedef struct Token {
@@ -50,7 +51,6 @@ typedef struct Context {
   FILE *cur_src;
   FILE *out;
 } Context;
-
 extern Context CONTEXT;
 
 Fields initFields(size_t size_of_field);
@@ -58,5 +58,6 @@ void freeFields(Fields *fields);
 
 Token initToken(size_t size);
 void copyToken(Token *dst, const Token *src);
+void resizeToken(Token *t);
 
 #endif

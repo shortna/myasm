@@ -21,8 +21,8 @@ TokenType getTokenType(Token *t) {
     return T_LSBRACE;
   case '!':
     return T_BANG;
-  case '$':
-    return T_DOLLAR;
+  case '=':
+    return T_EQUAL;
   }
 
   if (parseRegister(t->value, NULL)) {
@@ -57,6 +57,10 @@ TokenType getTokenType(Token *t) {
     return T_SHIFT;
   }
 
+  if (isString(t->value)) {
+    return T_STRING;
+  }
+
   return T_LABEL;
 }
 
@@ -87,6 +91,16 @@ u8 getToken(FILE *f, Token *t) {
       if (i != 0) {
         goto done;
       }
+      break;
+    case '"':
+      do {
+        t->value[i++] = ch;
+        ch = fgetc(SRC);
+        if (i == t->capacity - 2) {
+          resizeToken(t); 
+        }
+      } while (ch != '"' && ch != EOF);
+      t->value[i++] = ch;
       break;
     case '+':
     case '-':

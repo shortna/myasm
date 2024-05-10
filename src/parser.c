@@ -204,3 +204,10 @@ u8 parseCondition(const char *condition, ConditionType *c) {
   }
   return 1;
 }
+
+u8 isString(const char *str) {
+  if (*str == '"' && str[strlen(str) - 1] == '"') {
+    return 1;
+  }
+  return 0;
+}

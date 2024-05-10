@@ -761,6 +761,7 @@ Signature decodeTokens(const Fields *instruction) {
     case T_MINUS:
     case T_PLUS:
     case T_BANG:
+    case T_EQUAL:
       n--;
       break;
     default:
