@@ -149,6 +149,46 @@ ArmInstruction assembleLdrStrImm(const Fields *instruction) {
     return 0;
   }
 
+  u8 size = 0;
+  const char instruction_postfix =
+      instruction->fields[0].value[strlen(instruction->fields[0].value) - 1];
+
+  u32 pimm_cap = 0;
+  u8 scale = 1;
+
+  switch (instruction_postfix) {
+  case 'b':
+    pimm_cap = 4095;
+    size = 0;
+    break;
+  case 'h':
+    pimm_cap = 8190;
+    size = 1;
+    scale = 2;
+    break;
+  case 'w':
+    pimm_cap = 16380;
+    size = 2;
+    scale = 4;
+    // ldrsw - accepts only 64 bit register
+    if (!Rt.extended) {
+      // error here
+      return 0;
+    }
+    break;
+  default:
+    if (!Rt.extended) {
+      size = 2;
+      pimm_cap = 16380;
+      scale = 4;
+      break;
+    }
+    pimm_cap = 32760;
+    size = 3;
+    scale = 8;
+    break;
+  }
+
   i64 imm = 0;
   u8 imm_ind = 1;
   for (u8 i = 1; i < instruction->n_fields; i++) {
@@ -162,20 +202,16 @@ ArmInstruction assembleLdrStrImm(const Fields *instruction) {
   if (instruction->fields[instruction->n_fields - 1].type == T_LSBRACE) {
     op = SOP_LDR_STR_UIMM;
     if (instruction->n_fields != 5) {
-      if (!parseImmediateU32(instruction->fields[imm_ind].value, (u32*)&imm)) {
+      if (!parseImmediateU32(instruction->fields[imm_ind].value, (u32 *)&imm)) {
         // error here
         return 0;
       }
-      if (Rt.extended && (imm > 32760 || imm % 8 != 0)) {
+      if (imm > pimm_cap || imm % scale != 0) {
         // error here
         return 0;
       }
-      if (!Rt.extended && (imm > 16380 || imm % 4 != 0)) {
-        // error here
-        return 0;
-      }
-      imm = Rt.extended ? imm / 8 : imm / 4;
     }
+    imm = GENMASK(12) & (imm / scale);
   }
   // pre index
   // post index
@@ -189,36 +225,13 @@ ArmInstruction assembleLdrStrImm(const Fields *instruction) {
       return 0;
     }
     imm = GENMASK(9) & imm; // theres some junk in, why?
-    bool pre_indexed = instruction->fields[instruction->n_fields - 1].type == T_BANG;
+    bool pre_indexed =
+        instruction->fields[instruction->n_fields - 1].type == T_BANG;
     // if pre-indexed 3 else 1
-    imm = GENMASK(12) & ((imm << 2) | (pre_indexed ? 3 : 1)); 
+    imm = GENMASK(12) & ((imm << 2) | (pre_indexed ? 3 : 1));
     if ((i32)imm < 0) {
       imm |= BIT(8);
     }
-  }
-
-  u8 size = 0;
-  const char instruction_postfix =
-      instruction->fields[0].value[strlen(instruction->fields[0].value) - 1];
-
-  switch (instruction_postfix) {
-  case 'b':
-    size = 0;
-    break;
-  case 'h':
-    size = 1;
-    break;
-  case 'w':
-    size = 2;
-    // ldrsw - accepts only 64 bit register
-    if (!Rt.extended) {
-      // error here
-      return 0;
-    }
-    break;
-  default:
-    size = 2 | Rt.extended; // 0b10 or 0b11
-    break;
   }
 
   bool signed_ = instruction->fields->value[3] == 's';

@@ -2,12 +2,11 @@
 .section .text,"ax"
 
 _start: // commet
-//  // literal
-//  ldr	w0,label_int
-//  ldr	x0,label_int
-//  ldrsw	x0,label_int
-//  ldrsw	w0,label_int
-//
+  // literal
+  ldr	w0,label_int
+  ldr	x0,label_int
+  ldrsw	x0,label_int
+
 //  // register shifted
 //  strb	w0,[x2,x3,lsl 0]
 //  ldrb	w0,[x2,x3,lsl 0]
@@ -59,6 +58,9 @@ _start: // commet
   ldr	x0,[x2],-0x8
   ldr	w0,[sp],0x8
   ldr	x0,[x2],0x8
+	ldrsb	w0,[x2],0x8
+  ldrsh	w0,[x2],+0x8
+  ldrsw	x0,[x2],+0x8
 
   // pre index
   ldr	w0,[sp,+0x8]!
@@ -67,15 +69,21 @@ _start: // commet
   ldr	x0,[x2,-0x8]!
   ldr	w0,[sp,0x8]!
   ldr	x0,[x2,0x8]!
+  ldrsb	w0,[x2,+0x8]!
+  ldrsh	w0,[x2,+0x8]!
+  ldrsw	x0,[x2,+0x8]!
 
   // unsigned offset
   ldr	w0,[sp,+0x8]
   ldr	x0,[x2,+0x8]
   ldr	w0,[sp]
   ldr	x0,[x2]
+  ldrsb	w0,[x2,+0x8]
+  ldrsh	w0,[x2,+0x8]
+  ldrsw	x0,[x2,+0x8]
 
-//label_int:
-//  .int 0xffff
+label_int:
+  .int 0xffff
 
 // comment
 //movk x0,0,lsl 0
