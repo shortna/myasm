@@ -2,55 +2,55 @@
 .section .text,"ax"
 
 _start: // commet
-  // literal
-  ldr	w0,label_int
-  ldr	x0,label_int
-  ldrsw	x0,label_int
-  ldrsw	w0,label_int
-
-  // register shifted
-  strb	w0,[x2,x3,lsl 0]
-  ldrb	w0,[x2,x3,lsl 0]
-  ldrsb	w0,[x2,x3,lsl 0]
-  strb	w0,[x2,x3]
-  ldrb	w0,[x2,x3]
-  ldrsb	w0,[x2,x3]
-
-  // register
-	strb	w0,[x2,w3,sxtw]
-	strb	w0,[x2,w3,sxtw 0]
-	strb	w0,[x2,w3,uxtw]
-	strb	w0,[x2,w3,uxtw 0]
-	strb	w0,[x2,x3,sxtx]
-	strb	w0,[x2,x3,sxtx 0]
-	ldrb	w0,[x2,w3,sxtw]
-	ldrb	w0,[x2,w3,sxtw 0]
-	ldrb	w0,[x2,w3,uxtw]
-	ldrb	w0,[x2,w3,uxtw 0]
-	ldrb	w0,[x2,x3,sxtx]
-	ldrb	w0,[x2,x3,sxtx 0]
-	ldrsb	w0,[x2,w3,sxtw]
-	ldrsb	w0,[x2,w3,sxtw 0]
-	ldrsb	w0,[x2,w3,uxtw]
-	ldrsb	w0,[x2,w3,uxtw 0]
-	ldrsb	w0,[x2,x3,sxtx]
-	ldrsb	w0,[x2,x3,sxtx 0]
-  ldr	w0,[x2,w3,sxtw]
-  ldr	w0,[x2,w3,sxtw 2]
-  ldr	w0,[x2,w3,uxtw]
-  ldr	w0,[x2,w3,uxtw 2]
-  ldr	w0,[x2,x3,sxtx]
-  ldr	w0,[x2,x3,sxtx 2]
-  ldr	w0,[x2,x3,lsl 2]
-  ldr	x0,[x2,w3,sxtw]
-  ldr	x0,[x2,w3,sxtw 3]
-  ldr	x0,[x2,w3,uxtw]
-  ldr	x0,[x2,w3,uxtw 3]
-  ldr	x0,[x2,x3,sxtx]
-  ldr	x0,[x2,x3,sxtx 3]
-  ldr	x0,[x2,x3,lsl 3]
-  ldr	x0,[x2,x3]
-  ldr	w0,[x2,x3]
+//  // literal
+//  ldr	w0,label_int
+//  ldr	x0,label_int
+//  ldrsw	x0,label_int
+//  ldrsw	w0,label_int
+//
+//  // register shifted
+//  strb	w0,[x2,x3,lsl 0]
+//  ldrb	w0,[x2,x3,lsl 0]
+//  ldrsb	w0,[x2,x3,lsl 0]
+//  strb	w0,[x2,x3]
+//  ldrb	w0,[x2,x3]
+//  ldrsb	w0,[x2,x3]
+//
+//  // register
+//	strb	w0,[x2,w3,sxtw]
+//	strb	w0,[x2,w3,sxtw 0]
+//	strb	w0,[x2,w3,uxtw]
+//	strb	w0,[x2,w3,uxtw 0]
+//	strb	w0,[x2,x3,sxtx]
+//	strb	w0,[x2,x3,sxtx 0]
+//	ldrb	w0,[x2,w3,sxtw]
+//	ldrb	w0,[x2,w3,sxtw 0]
+//	ldrb	w0,[x2,w3,uxtw]
+//	ldrb	w0,[x2,w3,uxtw 0]
+//	ldrb	w0,[x2,x3,sxtx]
+//	ldrb	w0,[x2,x3,sxtx 0]
+//	ldrsb	w0,[x2,w3,sxtw]
+//	ldrsb	w0,[x2,w3,sxtw 0]
+//	ldrsb	w0,[x2,w3,uxtw]
+//	ldrsb	w0,[x2,w3,uxtw 0]
+//	ldrsb	w0,[x2,x3,sxtx]
+//	ldrsb	w0,[x2,x3,sxtx 0]
+//  ldr	w0,[x2,w3,sxtw]
+//  ldr	w0,[x2,w3,sxtw 2]
+//  ldr	w0,[x2,w3,uxtw]
+//  ldr	w0,[x2,w3,uxtw 2]
+//  ldr	w0,[x2,x3,sxtx]
+//  ldr	w0,[x2,x3,sxtx 2]
+//  ldr	w0,[x2,x3,lsl 2]
+//  ldr	x0,[x2,w3,sxtw]
+//  ldr	x0,[x2,w3,sxtw 3]
+//  ldr	x0,[x2,w3,uxtw]
+//  ldr	x0,[x2,w3,uxtw 3]
+//  ldr	x0,[x2,x3,sxtx]
+//  ldr	x0,[x2,x3,sxtx 3]
+//  ldr	x0,[x2,x3,lsl 3]
+//  ldr	x0,[x2,x3]
+//  ldr	w0,[x2,x3]
 
   // post index
   ldr	w0,[sp],+0x8
@@ -74,8 +74,8 @@ _start: // commet
   ldr	w0,[sp]
   ldr	x0,[x2]
 
-label_int:
-  .int 0xffff
+//label_int:
+//  .int 0xffff
 
 // comment
 //movk x0,0,lsl 0

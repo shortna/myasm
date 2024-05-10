@@ -11,10 +11,6 @@ size_t LINE = 0;
 
 TokenType getTokenType(Token *t) {
   switch (*t->value) {
-  case '+':
-    return T_PLUS;
-  case '-':
-    return T_MINUS;
   case '[':
     return T_RSBRACE;
   case ']':
@@ -102,8 +98,6 @@ u8 getToken(FILE *f, Token *t) {
       } while (ch != '"' && ch != EOF);
       t->value[i++] = ch;
       break;
-    case '+':
-    case '-':
     case '[':
     case ']':
     case '!':

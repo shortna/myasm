@@ -19,6 +19,9 @@ u8 parseDigit(const char *number, u64 *res) {
 
   u8 base = 10;
   const char *d = number;
+  if (*d == '-' || *d == '+') {
+    d++;
+  }
   if (*d == '0' && *(d + 1) == 'x') {
     base = 0;
   }
@@ -61,6 +64,23 @@ u8 parseRegister(const char *reg, Register *r) {
   if (r) {
     r->extended = *reg == 'x' || *reg == 's';
     r->n = n;
+  }
+  return 1;
+}
+
+u8 parseImmediateI64(const char *imm, i64 *res) {
+  u64 n;
+
+  if (*imm == '#') {
+    imm++;
+  }
+
+  if (!parseDigit(imm, &n)) {
+    return 0;
+  }
+
+  if (res) {
+    *res = n;
   }
   return 1;
 }

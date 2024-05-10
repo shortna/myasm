@@ -109,6 +109,7 @@ u8 parseImmediateU8(const char *imm, u8 *res);
 u8 parseImmediateU16(const char *imm, u16 *res);
 u8 parseImmediateU32(const char *imm, u32 *res);
 u8 parseImmediateU64(const char *imm, u64 *res);
+u8 parseImmediateI64(const char *imm, i64 *res);
 u8 parseExtend(const char *extend, ExtendType *ex);
 u8 parseShift(const char *shift, ShiftType *sh);
 u8 parseCondition(const char *condition, ConditionType *c);

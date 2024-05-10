@@ -24,8 +24,6 @@ typedef enum {
   T_STRING,
 
   // one symbol tokens
-  T_PLUS,
-  T_MINUS,
   T_RSBRACE,
   T_LSBRACE,
   T_BANG,
