@@ -1,5 +1,4 @@
 #include "directives.h"
-#include "instructions.h"
 #include "parser.h"
 #include "tables.h"
 #include "types.h"
@@ -75,18 +74,38 @@ u8 dSection(const Fields *f) {
   return 1;
 }
 
+u8 getDirectiveSize(const char *directive_arg) {
+  if (*directive_arg == '"') {
+    u64 len = 0;
+    directive_arg += 1;
+    while (directive_arg[len] != '"') {
+      len++;
+    }
+    return len;
+  }
+
+  u64 n = 0;
+  if (!parseImmediateU64(directive_arg, &n)) {
+    return 0;
+  }
+  return n * sizeof(0);
+}
+
 u8 dZero(const Fields *f) {
   u64 n;
   if (!parseImmediateU64(f->fields[1].value, &n)) {
     return 0;
   }
 
-  fwrite(0, sizeof(0), n, CONTEXT.out);
-  CONTEXT.pc += n * sizeof(0);
+  int z = 0;
+  for (u64 i = 0; i < n; i++) {
+    fwrite(&z, sizeof(z), 1, CONTEXT.out);
+  }
+  CONTEXT.pc += n * sizeof(z);
   return 1;
 }
 
-u8 dByte(const Fields *f) { 
+u8 dByte(const Fields *f) {
   u8 n;
   if (!parseImmediateU8(f->fields[1].value, &n)) {
     return 0;
@@ -108,10 +127,10 @@ u8 dInt(const Fields *f) {
   return 1;
 }
 
-u8 dAscii(const Fields *f) { 
+u8 dAscii(const Fields *f) {
   u64 len = 0;
   const char *str = f->fields[1].value + 1; // skips first '"'
-  while (*str != '"') {
+  while (str[len] != '"') {
     len++;
   }
 
@@ -120,56 +139,52 @@ u8 dAscii(const Fields *f) {
   return 1;
 }
 
-u8 dAsciiz(const Fields *f) { 
+u8 dAsciiz(const Fields *f) {
   if (!dAscii(f)) {
     return 0;
   }
 
-  fwrite(0, sizeof(char), 1, CONTEXT.out); // write '\0'
-  CONTEXT.pc += sizeof(char);
+  char z = 0;
+  fwrite(&z, sizeof(z), 1, CONTEXT.out); // write '\0'
+  CONTEXT.pc += sizeof(z);
   return 1;
 }
 
-static const char *DIRECTIVES[] = {
-    "global", "section", "byte", "int", "ascii", "asciiz", "zero",
-};
-
-i8 searchDirective(const char *name) {
+DirectiveType searchDirective(const char *name) {
   for (size_t i = 0; i < sizeof(DIRECTIVES) / sizeof(*DIRECTIVES); i++) {
-    if (strcmp(DIRECTIVES[i], name) == 0) {
-      return i;
+    if (strcmp(DIRECTIVES[i].name, name) == 0) {
+      return DIRECTIVES[i].t;
     }
   }
-  return -1;
+  return D_NONE;
 }
 
 u8 execDirective(Fields *f) {
-  i8 n = searchDirective(f->fields->value + 1);
+  DirectiveType n = searchDirective(f->fields->value + 1);
   u8 res = 0;
 
   switch (n) {
-  case -1:
-    // error here
-    break;
-  case 0:
+  case D_NONE:
+    return 0;
+  case D_GLOBAL:
     res = dGlobal(f);
     break;
-  case 1:
+  case D_SECTION:
     res = dSection(f);
     break;
-  case 2:
+  case D_BYTE:
     res = dByte(f);
     break;
-  case 3:
+  case D_INT:
     res = dInt(f);
     break;
-  case 4:
+  case D_ASCII:
     res = dAscii(f);
     break;
-  case 5:
+  case D_ASCIIZ:
     res = dAsciiz(f);
     break;
-  case 6:
+  case D_ZERO:
     res = dZero(f);
     break;
   }

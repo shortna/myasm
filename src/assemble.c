@@ -69,10 +69,29 @@ void makeLabels(void) {
     case T_INSTRUCTION:
       pc += ARM_INSTRUCTION_SIZE;
       break;
-    case T_DIRECTIVE:
-      pc += 0; // fix this
+    case T_DIRECTIVE: {
+      DirectiveType d = searchDirective(t.value);
+      switch (d) {
+      case D_NONE:
+      case D_GLOBAL:
+      case D_SECTION:
+        break;
+      case D_BYTE:
+        pc += sizeof(char);
+      case D_INT:
+        pc += sizeof(int);
+      case D_ASCIIZ:
+        pc += 1;
+      case D_ASCII:
+      case D_ZERO:
+        getToken(CONTEXT.cur_src, &t);
+        pc += getDirectiveSize(t.value);
+        break;
+      }
+      break;
     default:
       NULL;
+    }
     }
   }
 

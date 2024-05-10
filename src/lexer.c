@@ -37,7 +37,7 @@ TokenType getTokenType(Token *t) {
     return T_INSTRUCTION;
   }
 
-  if (searchDirective(t->value + 1) != -1) {
+  if (searchDirective(t->value + 1) != D_NONE) {
     return T_DIRECTIVE;
   }
 
