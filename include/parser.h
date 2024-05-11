@@ -38,7 +38,6 @@ static const struct ExtendMap EXTENDS[] = {
   {"sxth", SXTH},
   {"sxtw", SXTW},
   {"sxtx", SXTX},
-  {"lsl", LSL},
 };
 
 typedef enum {
