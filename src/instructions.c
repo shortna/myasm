@@ -291,6 +291,10 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {
     size = 1;
     break;
   case 'w':
+    if (!Rt.extended) {
+      // error here
+      return 0;
+    }
     size = 2;
     break;
   default:
@@ -338,76 +342,18 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {
   // opc is 3 bits now, with 1 at start
   opc = (opc << 1) | 1;
 
+  // same thing, but this time at start 0b10
   u8 S = 2;
   u8 option = 0;
-  if (size == 0 && (arg_type == T_SHIFT || arg_type == -1)) {
-    if (!Rm.extended) {
-      // error here
-      return 0;
-    }
-    option = 3;
-    if (arg_type != -1) {
-      S = S | BIT(2);
+  // assemble of instructions without shift
+  if (size != 0) {
+    if (arg_type == -1) {
+      option = 3;
+    } else {
+      if (instruction->fields[arg_ind + 1].type == T_IMMEDIATE) {
+      }
     }
   }
-//  else {
-//    const Token *last_field = instruction->fields + (instruction->n_fields - 2);
-//    u8 imm = 0;
-//    ExtendType ex_t = 0;
-//    if (last_field->type == T_IMMEDIATE) {
-//      if (!parseImmediateU8(last_field->value, &imm)) {
-//        // error here
-//        return 0;
-//      }
-//
-//      if (imm != 0 && imm != size) {
-//        // error here
-//        return 0;
-//      }
-//      last_field--;
-//    }
-//
-//    if (last_field->type != T_EXTEND) {
-//      if (size == 0) {
-//        // error here
-//        return 0;
-//      }
-//      ex_t = LSL;
-//    }
-//
-//    if (ex_t != LSL) {
-//      if (!parseExtend(last_field->value, &ex_t)) {
-//        // error here
-//        return 0;
-//      }
-//    }
-//
-//    switch (ex_t) {
-//    case UXTW:
-//      option = 2;
-//    case LSL:
-//      if (size == 0) {
-//        // error here
-//        return 0;
-//      }
-//      option = 3;
-//      break;
-//    case SXTW:
-//      option = 4;
-//      break;
-//    case SXTX:
-//      if (!Rm.extended) {
-//        // error here
-//        return 0;
-//      }
-//      option = 7;
-//      break;
-//    default:
-//      // error here
-//      return 0;
-//    }
-//    option = Rm.extended;
-//  }
 
   assembled = ((u32)size << 30) | ((u32)SOP_LDR_STR_REG << 24) |
               ((u32)opc << 21) | ((u32)Rm.n << 16) | ((u32)option << 13) |
