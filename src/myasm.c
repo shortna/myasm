@@ -33,23 +33,21 @@ int main(int argc, char **argv) {
     }
   }
 
-  const char *sources[MAX_NUMBER_FILES];
-  u8 n_sources = 0;
+  const char *source = NULL;
   for (int i = 1; i < argc; i++) {
     if (access(argv[i], F_OK) == 0) {
       if (!out_name || strcmp(out_name, argv[i]) != 0) {
-        sources[n_sources] = argv[i];
-        n_sources++;
+        source = argv[i];
       }
     }
   }
 
-  if (n_sources == 0) {
+  if (source == 0) {
     fprintf(stderr, "Please, provide source file");
     return EXIT_FAILURE;
   }
 
-  if (!make(n_sources, sources, out_name)) {
+  if (!make(source, out_name)) {
     return EXIT_FAILURE;
   }
 

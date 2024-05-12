@@ -3,6 +3,6 @@
 
 #include "myasm.h"
 
-u8 make(u8 n_sources, const char **sources, const char *out_name);
+u8 make(const char *source, const char *out_name);
 
 #endif

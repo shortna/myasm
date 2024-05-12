@@ -31,7 +31,7 @@ Token initToken(size_t size) {
 }
 
 void copyToken(Token *dst, const Token *src) {
-  if (dst->capacity < src->capacity) {
+  if (dst->capacity < src->capacity || !dst->value) {
     dst->capacity = src->capacity;
     dst->value = xrealloc(dst->value, dst->capacity * sizeof(*dst->value));
   }

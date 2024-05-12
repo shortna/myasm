@@ -33,7 +33,6 @@ u8 collectLineOfTokens(Fields *f) {
 
     switch (f->fields[f->n_fields].type) {
     case T_LABEL_DECLARATION:
-      break;
     case T_INSTRUCTION:
     case T_DIRECTIVE:
       if (f->n_fields != 0) {
@@ -58,11 +57,12 @@ done:
 void makeLabels(void) {
   Token t = initToken(TOKEN_SIZE);
 
-  size_t pc = 0;
+  u8 section_ind = 0;
+  u64 pc = 0;
   while (getToken(CONTEXT.cur_src, &t)) {
     switch (t.type) {
     case T_LABEL_DECLARATION:
-      if (!addToSym(t.value, pc, 0, ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE))) {
+      if (!addToSym(t.value, pc, 0, ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE), section_ind)) {
         // error here
       }
       break;
@@ -70,18 +70,23 @@ void makeLabels(void) {
       pc += ARM_INSTRUCTION_SIZE;
       break;
     case T_DIRECTIVE: {
-      DirectiveType d = searchDirective(t.value);
+      DirectiveType d = searchDirective(t.value + 1);
       switch (d) {
+      case D_SECTION:
+        section_ind++;
+        __attribute__((fallthrough));
       case D_NONE:
       case D_GLOBAL:
-      case D_SECTION:
         break;
       case D_BYTE:
         pc += sizeof(char);
+        break;
       case D_INT:
         pc += sizeof(int);
+        break;
       case D_ASCIIZ:
         pc += 1;
+        __attribute__((fallthrough));
       case D_ASCII:
       case D_ZERO:
         getToken(CONTEXT.cur_src, &t);
@@ -95,13 +100,14 @@ void makeLabels(void) {
     }
   }
 
+  CONTEXT.pc = 0;
   free(t.value);
 }
 
 u8 makeAssemble(void) {
   Fields f = initFields(TOKEN_SIZE);
   u8 ret = 0;
-  fseek(CONTEXT.out, ELF64_SIZE, SEEK_SET);
+  fseek(CONTEXT.out, ELF64_HEADER_SIZE, SEEK_SET);
 
   do {
     ret = collectLineOfTokens(&f);
@@ -116,11 +122,18 @@ u8 makeAssemble(void) {
       fwrite(&instruction, sizeof(instruction), 1, CONTEXT.out);
       break;
     }
-    case T_DIRECTIVE:
-      if (!execDirective(&f)) {
-        // error here
+    case T_DIRECTIVE: {
+      DirectiveType d = searchDirective(f.fields->value);
+      switch (d) {
+      case D_SECTION:
+        break;
+      default:
+        if (!execDirective(&f)) {
+          // error here
+        }
         break;
       }
+    }
     default:
       NULL;
     }
@@ -130,42 +143,44 @@ u8 makeAssemble(void) {
   return 1;
 }
 
-u8 make(u8 n_sources, const char **sources, const char *out_name) {
-  FILE *out = NULL;
+u8 make(const char *sources, const char *out_name) {
+  CONTEXT.out = NULL;
   if (!out_name) {
     out_name = alloca(8);
     strcpy((char *)out_name, "a.out");
   }
 
-  out = fopen(out_name, "wb");
-  if (!out) {
+  CONTEXT.out = fopen(out_name, "wb");
+  if (!CONTEXT.out) {
     fprintf(stderr, "Failed to open %s file. Error: %s\n", out_name,
             strerror(errno));
     return 0;
   }
-  CONTEXT.out = out;
+
+  CONTEXT.cur_src = fopen(sources, "rb");
+  if (!CONTEXT.cur_src) {
+    fclose(CONTEXT.out);
+    fprintf(stderr, "Failed to open %s file. Error: %s\n", out_name,
+            strerror(errno));
+    return 0;
+  }
 
   initSymbolTable();
   initShdrTable();
+  makeLabels();
 
-  for (u8 i = 0; i < n_sources; i++) {
-    FILE *src = fopen(sources[i], "rb");
-    if (!src) {
-      fprintf(stderr, "Failed to open %s file. Error: %s\n", sources[i],
-              strerror(errno));
-      return 0;
-    }
-    CONTEXT.cur_src = src;
+  fseek(CONTEXT.cur_src, 0, SEEK_SET);
+  initRelocationTable();
+  makeAssemble();
 
-    makeLabels();
-    fseek(CONTEXT.cur_src, 0, SEEK_SET);
-    makeAssemble();
-    fclose(CONTEXT.cur_src);
+  if (!writeElf(CONTEXT.out)) {
+    // error here
   }
-  writeElf(CONTEXT.out);
+  fclose(CONTEXT.cur_src);
+  fclose(CONTEXT.out);
 
   freeSymoblTable();
   freeShdrTable();
-  fclose(CONTEXT.out);
+  freeRelocationTable();
   return 1;
 }

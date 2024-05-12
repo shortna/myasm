@@ -21,8 +21,15 @@ typedef struct ShdrTable {
   size_t capacity;
 } ShdrTable;
 
+typedef struct RelocationTable {
+  Elf64_Rela *items;
+  size_t count;
+  size_t capacity;
+} RelocationTable;
+
 static SymTable SYMBOLS = {0};
 static ShdrTable SECTIONS = {0};
+static RelocationTable RELOCATIONS = {0};
 
 void initSymbolTable(void) {
   SYMBOLS.items = xmalloc(TALBE_START_SIZE * sizeof(*SYMBOLS.items));
@@ -31,7 +38,7 @@ void initSymbolTable(void) {
 
   SYMBOLS.count = 0;
   SYMBOLS.capacity = TALBE_START_SIZE;
-  addToSym("", 0, 0, 0);
+  addToSym("", 0, 0, 0, 0);
   SYMBOLS.items[0].st_name = 0;
 }
 
@@ -46,6 +53,12 @@ void initShdrTable(void) {
   SECTIONS.items[0].sh_name = 0;
 }
 
+void initRelocationTable(void) {
+  RELOCATIONS.items = xmalloc(TALBE_START_SIZE * sizeof(*RELOCATIONS.items));
+  RELOCATIONS.capacity = TALBE_START_SIZE;
+  RELOCATIONS.count = 0;
+}
+
 void freeSymoblTable(void) {
   free(SYMBOLS.items);
   free(SYMBOLS.strtab);
@@ -54,6 +67,10 @@ void freeSymoblTable(void) {
 void freeShdrTable(void) {
   free(SECTIONS.items);
   free(SECTIONS.shstrtab);
+}
+
+void freeRelocationTable(void) {
+  free(RELOCATIONS.items);
 }
 
 ssize_t searchTable(const char *needle, const char *strtable, size_t count) {
@@ -129,7 +146,8 @@ u8 concatStrs(char *table, const char *s, size_t count) {
 
 size_t getStringTableSize(const char *table);
 
-u8 addToSym(const char *name, Elf64_Addr st_value, u64 st_size, u8 st_info) {
+u8 addToSym(const char *name, Elf64_Addr st_value, u64 st_size, u8 st_info,
+            u8 st_shndx) {
   ssize_t res = searchInSym(name);
   if (res != -1) {
     return 0;
@@ -144,7 +162,7 @@ u8 addToSym(const char *name, Elf64_Addr st_value, u64 st_size, u8 st_info) {
   item->st_size = st_size;
   item->st_info = ELF64_ST_INFO(STB_LOCAL, st_info);
   item->st_other = STV_DEFAULT;
-  item->st_shndx = 0;
+  item->st_shndx = st_shndx;
   concatStrs(SYMBOLS.strtab, name, SYMBOLS.count);
   SYMBOLS.count++;
   return 1;
@@ -212,7 +230,7 @@ u8 writeHeader(FILE *out) {
                   0,
                   e_shoff,
                   0,
-                  ELF64_SIZE,
+                  ELF64_HEADER_SIZE,
                   0,
                   0,
                   sizeof(Elf64_Shdr),
@@ -271,7 +289,6 @@ u8 writeTables(FILE *out) {
   return 1;
 }
 
-// remove duplicates and sort
 u8 removeDuplicates(void) {
   Elf64_Shdr *items = SECTIONS.items;
   for (size_t i = 1; i < SECTIONS.count - 1; i++) {
@@ -304,7 +321,7 @@ void sortSections(void) {
                      searchInShdr(".bss")};
 
   u8 cur = 1;
-  for (size_t i = 0; i < sizeof(order) / sizeof(*order); i++) {
+  for (u8 i = 0; i < sizeof(order) / sizeof(*order); i++) {
     if (order[i] != -1) {
       Elf64_Shdr tmp = items[cur];
       items[cur] = items[order[i]];
@@ -313,47 +330,32 @@ void sortSections(void) {
     }
   }
 
-  SECTIONS.items[1].sh_offset = ELF64_SIZE;
+  for (u8 i = 0; i < SECTIONS.count; i++) {
+    SECTIONS.items[i].sh_offset += ELF64_HEADER_SIZE;
+  }
 }
 
 void backpatch(void) {
   Elf64_Shdr *section = SECTIONS.items;
-  for (size_t i = 1; i < SECTIONS.count - 1; i++) {
+  for (u8 i = 1; i < SECTIONS.count - 1; i++) {
     section[i].sh_size = section[i + 1].sh_offset - section[i].sh_offset;
   }
 
   section[SECTIONS.count - 1].sh_size =
-      CONTEXT.pc - section[SECTIONS.count - 1].sh_offset + ELF64_SIZE;
-
-  Elf64_Sym *symbol = SYMBOLS.items;
-  if (SECTIONS.count == 2) {
-    for (size_t i = 1; i < SYMBOLS.count; i++) {
-      symbol[i].st_shndx = 1;
-    }
-    return;
-  }
-
-  for (size_t i = 1; i < SECTIONS.count - 1; i++) {
-    for (size_t j = 1; j < SYMBOLS.count; j++) {
-      if (symbol[j].st_value + ELF64_SIZE <= section[i + 1].sh_offset) {
-        symbol[j].st_shndx = i;
-      }
-    }
-  }
+      CONTEXT.pc - section[SECTIONS.count - 1].sh_offset + ELF64_HEADER_SIZE;
 }
 
 u8 writeElf(FILE *out) {
-  if (SECTIONS.count == 1) { // if no section default to .text
-    addToShdr(".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, 0, 0, 0, 0);
+  if (SECTIONS.count == 1) {
+    return 0;
   }
-
   if (!removeDuplicates()) {
     return 0;
   }
   sortSections();
   backpatch();
-  writeTables(out);
 
+  writeTables(out);
   fseek(out, 0, SEEK_SET);
   writeHeader(out);
   return 1;

@@ -18,16 +18,15 @@ assemble_with_mine: $(TEST_FILE)
 	$(MAKE) -C .. --no-print-directory 2> /dev/null
 	$(MYASM) $^ -o $@
 	$(OBJCOPY) -O binary --only-section=.text $@ $(OUT_MINE)
-	rm $@
 
 assemble_with_test: $(TEST_FILE)
 	$(AS) $^ -o $@
 	$(OBJCOPY) -O binary --only-section=.text $@ $(OUT_TEST)
-	rm $@
 
-test: assemble_with_test assemble_with_mine
+test: assemble_with_mine assemble_with_test 
 	diff <(xxd $(OUT_MINE)) <(xxd $(OUT_TEST))
 	
 clean:
-	$(RM) $(OUT_MINE) $(OUT_TEST)
+	$(RM) $(OUT_MINE) $(OUT_TEST) assemble_with_mine assemble_with_test test
+
 
