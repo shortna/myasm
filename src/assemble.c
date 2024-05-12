@@ -122,18 +122,17 @@ u8 makeAssemble(void) {
       fwrite(&instruction, sizeof(instruction), 1, CONTEXT.out);
       break;
     }
-    case T_DIRECTIVE: {
-      DirectiveType d = searchDirective(f.fields->value);
-      switch (d) {
+    case T_DIRECTIVE:
+      switch (searchDirective(f.fields->value + 1)) {
       case D_SECTION:
-        break;
+        CONTEXT.cur_sndx++;
+        __attribute__((fallthrough));
       default:
         if (!execDirective(&f)) {
           // error here
         }
         break;
       }
-    }
     default:
       NULL;
     }

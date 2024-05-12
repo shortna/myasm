@@ -2,6 +2,7 @@
 #include "parser.h"
 #include "tables.h"
 #include "types.h"
+#include <elf.h>
 #include <string.h>
 
 // Static opcodes
@@ -1004,35 +1005,43 @@ ArmInstruction assemble(const Fields *instruction) {
   case ADDSUB_IMM:
     i = assembleAddSubImm(instruction);
     break;
-  case PCRELADDRESSING:
-    i = assemblePcRelAddressing(instruction);
-    break;
-  case EXCEPTION:
-    i = assembleException(instruction);
-    break;
-  case CONDITIONAL_BRANCH_IMM:
-    i = assembleConditionalBranchImm(instruction);
-    break;
-  case UNCONDITIONAL_BRANCH_IMM:
-    i = assembleUnconditionalBranchImm(instruction);
-    break;
   case UNCONDITIONAL_BRANCH_REG:
     i = assembleUnconditionalBranchReg(instruction);
     break;
-  case COMPARE_BRANCH:
-    i = assembleCompareBranch(instruction);
-    break;
-  case TEST_BRANCH:
-    i = assembleTestBranch(instruction);
-    break;
-  case LDR_LITERAL:
-    i = assembleLdrLiteral(instruction);
+  case EXCEPTION:
+    i = assembleException(instruction);
     break;
   case LDR_STR_REG:
     i = assembleLdrStrReg(instruction);
     break;
   case LDR_STR_IMM:
     i = assembleLdrStrImm(instruction);
+    break;
+  case PCRELADDRESSING:
+    i = assemblePcRelAddressing(instruction);
+    addRelocation(, R_AARCH64_ADR_PREL_LO21);
+    break;
+  case CONDITIONAL_BRANCH_IMM:
+    i = assembleConditionalBranchImm(instruction);
+    addRelocation(, R_AARCH64_CONDBR19);
+    break;
+  case UNCONDITIONAL_BRANCH_IMM:
+    i = assembleUnconditionalBranchImm(instruction);
+    const char *mnemonic = instruction->fields->value;
+    bool link = *(mnemonic + strlen(mnemonic) - 1) == 'l';
+    addRelocation(, link ? R_AARCH64_CALL26 : R_AARCH64_JUMP26);
+    break;
+  case COMPARE_BRANCH:
+    i = assembleCompareBranch(instruction);
+    addRelocation(, R_AARCH64_CONDBR19);
+    break;
+  case TEST_BRANCH:
+    i = assembleTestBranch(instruction);
+    addRelocation(, R_AARCH64_TSTBR14);
+    break;
+  case LDR_LITERAL:
+    i = assembleLdrLiteral(instruction);
+    addRelocation(, R_AARCH64_LD_PREL_LO19);
     break;
   case NONE:
     // error here

@@ -69,9 +69,7 @@ void freeShdrTable(void) {
   free(SECTIONS.shstrtab);
 }
 
-void freeRelocationTable(void) {
-  free(RELOCATIONS.items);
-}
+void freeRelocationTable(void) { free(RELOCATIONS.items); }
 
 ssize_t searchTable(const char *needle, const char *strtable, size_t count) {
   strtable++; // skip first entry cause its always \0
@@ -121,6 +119,12 @@ void resizeShdrTable(void) {
   SECTIONS.shstrtab =
       xrealloc(SECTIONS.shstrtab,
                SECTIONS.capacity * TOKEN_SIZE * sizeof(*SECTIONS.shstrtab));
+}
+
+void resizeRelocations(void) {
+  RELOCATIONS.capacity *= 2;
+  RELOCATIONS.items = xrealloc(
+      RELOCATIONS.items, RELOCATIONS.capacity * sizeof(*RELOCATIONS.items));
 }
 
 ssize_t getLabelPc(const char *needle) {
@@ -192,6 +196,25 @@ u8 addToShdr(const char *name, u32 sh_type, u64 sh_flags, Elf64_Off sh_offset,
   item->sh_entsize = sh_entsize;
   concatStrs(SECTIONS.shstrtab, name, SECTIONS.count);
   SECTIONS.count++;
+  return 1;
+}
+
+u8 addRelocation(u8 label_ind, u64 info) {
+  u8 label_shndx = SYMBOLS.items[label_ind].st_shndx;
+  // is label in current section?
+  if (label_shndx == CONTEXT.cur_sndx) {
+    return 1;
+  }
+
+  if (RELOCATIONS.count == RELOCATIONS.capacity) {
+    resizeRelocations();
+  }
+
+  Elf64_Rela *item = RELOCATIONS.items + RELOCATIONS.count;
+  item->r_addend = 0;
+  item->r_offset = CONTEXT.pc;
+  item->r_info = ELF64_R_INFO(SYMBOLS.items[label_ind].st_value, info);
+  RELOCATIONS.count++;
   return 1;
 }
 

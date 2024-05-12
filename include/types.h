@@ -46,6 +46,7 @@ typedef struct _IO_FILE FILE;
 
 typedef struct Context {
   u64 pc;
+  u8 cur_sndx;
   FILE *cur_src;
   FILE *out;
 } Context;
