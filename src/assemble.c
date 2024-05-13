@@ -69,14 +69,10 @@ void makeLabels(void) {
     case T_INSTRUCTION:
       pc += ARM_INSTRUCTION_SIZE;
       break;
-    case T_DIRECTIVE: {
-      DirectiveType d = searchDirective(t.value + 1);
-      switch (d) {
+    case T_DIRECTIVE: 
+      switch (searchDirective(t.value + 1)) {
       case D_SECTION:
         section_ind++;
-        __attribute__((fallthrough));
-      case D_NONE:
-      case D_GLOBAL:
         break;
       case D_BYTE:
         pc += sizeof(char);
@@ -92,11 +88,11 @@ void makeLabels(void) {
         getToken(CONTEXT.cur_src, &t);
         pc += getDirectiveSize(t.value);
         break;
+      default:
+        NULL;
       }
-      break;
     default:
       NULL;
-    }
     }
   }
 
@@ -123,16 +119,13 @@ u8 makeAssemble(void) {
       break;
     }
     case T_DIRECTIVE:
-      switch (searchDirective(f.fields->value + 1)) {
-      case D_SECTION:
+      if (searchDirective(f.fields->value + 1) == D_SECTION) {
         CONTEXT.cur_sndx++;
-        __attribute__((fallthrough));
-      default:
-        if (!execDirective(&f)) {
-          // error here
-        }
-        break;
       }
+      if (!execDirective(&f)) {
+        // error here
+      }
+      break;
     default:
       NULL;
     }
@@ -149,10 +142,9 @@ u8 make(const char *sources, const char *out_name) {
     strcpy((char *)out_name, "a.out");
   }
 
-  CONTEXT.out = fopen(out_name, "wb");
+  CONTEXT.out = tmpfile();
   if (!CONTEXT.out) {
-    fprintf(stderr, "Failed to open %s file. Error: %s\n", out_name,
-            strerror(errno));
+    fprintf(stderr, "Failed to open tmp file. Error: %s\n", strerror(errno));
     return 0;
   }
 

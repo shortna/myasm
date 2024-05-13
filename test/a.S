@@ -2,32 +2,32 @@
 .section .text,"ax"
 
 _start: // commet
-  // literal
-  ldr	w0,label_int
-//  ldr	x0,label_int
-//  ldrsw	x0,label_int
-
-  b	lable_int
-  bl lable_int
-  b.eq lable_int
-
-  adr x0, label_int
-
-  cbnz	w1,lable_int
-  cbnz	x1,lable_int
-
-  cbz	w1,lable_int
-  cbz	x1,lable_int
-
-  tbnz	w1,2,lable_int
-  tbnz	x1,63,lable_int
-
-  tbz	w1,2,lable_int
-  tbz	x1,63,lable_int
-
-.section .data,"wa"
-label_int:
-  .int 0xffff
+//  // literal
+//  ldr	w0,label_int
+////  ldr	x0,label_int
+////  ldrsw	x0,label_int
+//
+//  b	lable_int
+//  bl lable_int
+//  b.eq lable_int
+//
+//  adr x0, label_int
+//
+//  cbnz	w1,lable_int
+//  cbnz	x1,lable_int
+//
+//  cbz	w1,lable_int
+//  cbz	x1,lable_int
+//
+//  tbnz	w1,2,lable_int
+//  tbnz	x1,63,lable_int
+//
+//  tbz	w1,2,lable_int
+//  tbz	x1,63,lable_int
+//
+//.section .data,"wa"
+//label_int:
+//  .int 0xffff
 
 //  // register shifted
 //  strb	w0,[x2,x3,lsl 0]

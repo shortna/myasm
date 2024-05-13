@@ -69,8 +69,8 @@ u8 getToken(FILE *f, Token *t) {
     return 0;
   }
 
-  int ch;
   size_t i = 0;
+  int ch;
   while ((ch = tolower(getc(SRC))) != EOF) {
     switch (ch) {
     case '/':
@@ -101,7 +101,7 @@ u8 getToken(FILE *f, Token *t) {
     case '[':
     case ']':
     case '!':
-    case '$':
+    case '=':
       if (i != 0) {
         fseek(SRC, -1, SEEK_CUR);
         goto done;

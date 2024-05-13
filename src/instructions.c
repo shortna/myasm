@@ -34,7 +34,6 @@
 // instruction mnemonic MUST be in order of incresing opc field
 static const Instruction INSTRUCTIONS[] = {
     {{"adr", "adrp"}, PCRELADDRESSING, {2, REGISTER, LABEL}},
-
     {{"movn", "movz", "movk"}, MOVEWIDE, {3, REGISTER, IMMEDIATE, SHIFT | OPTIONAL}},
     {{"add", "sub"}, ADDSUB_IMM, {4, REGISTER | SP, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
     {{"adds", "subs"}, ADDSUB_IMM, {4, REGISTER, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
@@ -731,8 +730,6 @@ ArmInstruction assembleLogicalShReg(const Fields *instruction) {
 }
 
 ArmInstruction assembleMoveWide(const Fields *instruction) {
-  ArmInstruction assembled = 0;
-
   Register Rd;
   if (!parseRegister(instruction->fields[1].value, &Rd)) {
     // error here
@@ -781,10 +778,8 @@ ArmInstruction assembleMoveWide(const Fields *instruction) {
 
   u8 hw = sh_imm / 16;
 
-  assembled = ((u32)sf << 31) | ((u32)opc << 29) | ((u32)SOP_MOVE_WIDE << 23) |
-              ((u32)hw << 21) | ((u32)imm << 5) | Rd.n;
-
-  return assembled;
+  return ((u32)sf << 31) | ((u32)opc << 29) | ((u32)SOP_MOVE_WIDE << 23) |
+         ((u32)hw << 21) | ((u32)imm << 5) | Rd.n;
 }
 
 ArmInstruction assembleAddSubImm(const Fields *instruction) {

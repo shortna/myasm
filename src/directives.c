@@ -160,34 +160,25 @@ DirectiveType searchDirective(const char *name) {
 }
 
 u8 execDirective(Fields *f) {
-  DirectiveType n = searchDirective(f->fields->value + 1);
-  u8 res = 0;
+  DirectiveType t = searchDirective(f->fields->value + 1);
 
-  switch (n) {
+  switch (t) {
   case D_NONE:
     return 0;
   case D_GLOBAL:
-    res = dGlobal(f);
-    break;
+    return dGlobal(f);
   case D_SECTION:
-    res = dSection(f);
-    break;
+    return dSection(f);
   case D_BYTE:
-    res = dByte(f);
-    break;
+    return dByte(f);
   case D_INT:
-    res = dInt(f);
-    break;
+    return dInt(f);
   case D_ASCII:
-    res = dAscii(f);
-    break;
+    return dAscii(f);
   case D_ASCIIZ:
-    res = dAsciiz(f);
+    return dAsciiz(f);
     break;
   case D_ZERO:
-    res = dZero(f);
-    break;
+    return dZero(f);
   }
-
-  return res;
 }
