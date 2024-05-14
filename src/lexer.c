@@ -7,7 +7,7 @@
 #include <stdio.h>
 
 FILE *SRC = NULL;
-size_t LINE = 0;
+u64 LINE = 0;
 
 TokenType getTokenType(Token *t) {
   switch (*t->value) {

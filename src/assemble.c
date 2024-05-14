@@ -142,7 +142,8 @@ u8 make(const char *sources, const char *out_name) {
     strcpy((char *)out_name, "a.out");
   }
 
-  CONTEXT.out = tmpfile();
+//  CONTEXT.out = tmpfile();
+  CONTEXT.out = fopen(out_name, "w");
   if (!CONTEXT.out) {
     fprintf(stderr, "Failed to open tmp file. Error: %s\n", strerror(errno));
     return 0;

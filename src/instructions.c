@@ -748,6 +748,7 @@ ArmInstruction assembleMoveWide(const Fields *instruction) {
   u8 sh_imm = 0;
   if (instruction->n_fields > 3) {
     if (!parseShift(instruction->fields[3].value, &t)) {
+      printError("unknown Shift type");
       // error here
       return 0;
     }
@@ -1014,29 +1015,29 @@ ArmInstruction assemble(const Fields *instruction) {
     break;
   case PCRELADDRESSING:
     i = assemblePcRelAddressing(instruction);
-    addRelocation(, R_AARCH64_ADR_PREL_LO21);
+//    addRelocation(, R_AARCH64_ADR_PREL_LO21);
     break;
   case CONDITIONAL_BRANCH_IMM:
     i = assembleConditionalBranchImm(instruction);
-    addRelocation(, R_AARCH64_CONDBR19);
+//    addRelocation(, R_AARCH64_CONDBR19);
     break;
   case UNCONDITIONAL_BRANCH_IMM:
     i = assembleUnconditionalBranchImm(instruction);
-    const char *mnemonic = instruction->fields->value;
-    bool link = *(mnemonic + strlen(mnemonic) - 1) == 'l';
-    addRelocation(, link ? R_AARCH64_CALL26 : R_AARCH64_JUMP26);
+//    const char *mnemonic = instruction->fields->value;
+//    bool link = *(mnemonic + strlen(mnemonic) - 1) == 'l';
+//    addRelocation(, link ? R_AARCH64_CALL26 : R_AARCH64_JUMP26);
     break;
   case COMPARE_BRANCH:
     i = assembleCompareBranch(instruction);
-    addRelocation(, R_AARCH64_CONDBR19);
+//    addRelocation(, R_AARCH64_CONDBR19);
     break;
   case TEST_BRANCH:
     i = assembleTestBranch(instruction);
-    addRelocation(, R_AARCH64_TSTBR14);
+//    addRelocation(, R_AARCH64_TSTBR14);
     break;
   case LDR_LITERAL:
     i = assembleLdrLiteral(instruction);
-    addRelocation(, R_AARCH64_LD_PREL_LO19);
+////    addRelocation(, R_AARCH64_LD_PREL_LO19);
     break;
   case NONE:
     // error here

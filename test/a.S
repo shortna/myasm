@@ -116,7 +116,7 @@ _start: // commet
 //  .int 0xffff
 //
 //// comment
-//movk x0,0,lsl 0
+movk x0,0,lsl 0
 //movk x0,0,lsl 16
 //movk x0,0,lsl 32
 //movk x0,0,lsl 48
