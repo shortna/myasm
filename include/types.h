@@ -9,6 +9,7 @@ typedef u32 ArmInstruction;
 
 typedef enum {
   T_NONE,
+  T_EOL,
 
   T_DIRECTIVE,
   T_INSTRUCTION,

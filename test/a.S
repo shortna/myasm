@@ -1,122 +1,124 @@
-.global _start
-.section .text,"ax"
+//.global _start
+//.section .text,"ax"
 
-_start: // commet
-//  // literal
-//  ldr	w0,label_int
-////  ldr	x0,label_int
-////  ldrsw	x0,label_int
+// _start: // comment
+mok x0,0,lsl 0 // comment
+mk x1,0,lsl 0
+////  // literal
+////  ldr	w0,label_int
+//////  ldr	x0,label_int
+//////  ldrsw	x0,label_int
+////
+////  b	lable_int
+////  bl lable_int
+////  b.eq lable_int
+////
+////  adr x0, label_int
+////
+////  cbnz	w1,lable_int
+////  cbnz	x1,lable_int
+////
+////  cbz	w1,lable_int
+////  cbz	x1,lable_int
+////
+////  tbnz	w1,2,lable_int
+////  tbnz	x1,63,lable_int
+////
+////  tbz	w1,2,lable_int
+////  tbz	x1,63,lable_int
+////
+////.section .data,"wa"
+////label_int:
+////  .int 0xffff
 //
-//  b	lable_int
-//  bl lable_int
-//  b.eq lable_int
+////  // register shifted
+////  strb	w0,[x2,x3,lsl 0]
+////  ldrb	w0,[x2,x3,lsl 0]
+////  ldrsb	w0,[x2,x3,lsl 0]
+////  strb	w0,[x2,x3]
+////  ldrb	w0,[x2,x3]
+////  ldrsb	w0,[x2,x3]
+////
+////  // register
+////  strb	w0,[x2,w3,sxtw]
+////  strb	w0,[x2,w3,sxtw 0]
+////  strb	w0,[x2,w3,uxtw]
+////  strb	w0,[x2,w3,uxtw 0]
+////  strb	w0,[x2,x3,sxtx]
+////  strb	w0,[x2,x3,sxtx 0]
+////  ldrb	w0,[x2,w3,sxtw]
+////  ldrb	w0,[x2,w3,sxtw 0]
+////  ldrb	w0,[x2,w3,uxtw]
+////  ldrb	w0,[x2,w3,uxtw 0]
+////  ldrb	w0,[x2,x3,sxtx]
+////  ldrb	w0,[x2,x3,sxtx 0]
+////  ldrsb	w0,[x2,w3,sxtw]
+////  ldrsb	w0,[x2,w3,sxtw 0]
+////  ldrsb	w0,[x2,w3,uxtw]
+////  ldrsb	w0,[x2,w3,uxtw 0]
+////  ldrsb	w0,[x2,x3,sxtx]
+////  ldrsb	w0,[x2,x3,sxtx 0]
+////  ldrsh	w0,[x2,w3,sxtw]
+////  ldrsh	w0,[x2,w3,sxtw 1]
+////  ldrsh	w0,[x2,w3,uxtw]
+////  ldrsh	w0,[x2,w3,uxtw 1]
+////  ldrsh	w0,[x2,x3]
+////  ldrsh	w0,[x2,x3,lsl 1]
+////  ldrsh	w0,[x2,x3,sxtx]
+////  ldrsh	w0,[x2,x3,sxtx 1]
+////  ldr	w0,[x2,w3,sxtw]
+////  ldr	w0,[x2,w3,sxtw 2]
+////  ldr	w0,[x2,w3,uxtw]
+////  ldr	w0,[x2,w3,uxtw 2]
+////  ldr	w0,[x2,x3,sxtx]
+////  ldr	w0,[x2,x3,sxtx 2]
+////  ldr	w0,[x2,x3,lsl 2]
+////  ldr	x0,[x2,w3,sxtw]
+////  ldr	x0,[x2,w3,sxtw 3]
+////  ldr	x0,[x2,w3,uxtw]
+////  ldr	x0,[x2,w3,uxtw 3]
+////  ldr	x0,[x2,x3,sxtx]
+////  ldr	x0,[x2,x3,sxtx 3]
+////  ldr	x0,[x2,x3,lsl 3]
+////  ldr	x0,[x2,x3]
+////  ldr	w0,[x2,x3]
 //
-//  adr x0, label_int
+////  // post index
+////  ldr	w0,[sp],+0x8
+////  ldr	x0,[x2],+0x8
+////  ldr	w0,[sp],-0x8
+////  ldr	x0,[x2],-0x8
+////  ldr	w0,[sp],0x8
+////  ldr	x0,[x2],0x8
+////	ldrsb	w0,[x2],0x8
+////  ldrsh	w0,[x2],+0x8
+////  ldrsw	x0,[x2],+0x8
+////
+////  // pre index
+////  ldr	w0,[sp,+0x8]!
+////  ldr	x0,[x2,+0x8]!
+////  ldr	w0,[sp,-0x8]!
+////  ldr	x0,[x2,-0x8]!
+////  ldr	w0,[sp,0x8]!
+////  ldr	x0,[x2,0x8]!
+////  ldrsb	w0,[x2,+0x8]!
+////  ldrsh	w0,[x2,+0x8]!
+////  ldrsw	x0,[x2,+0x8]!
+////
+////  // unsigned offset
+////  ldr	w0,[sp,+0x8]
+////  ldr	x0,[x2,+0x8]
+////  ldr	w0,[sp]
+////  ldr	x0,[x2]
+////  ldrsb	w0,[x2,+0x8]
+////  ldrsh	w0,[x2,+0x8]
+////  ldrsw	x0,[x2,+0x8]
 //
-//  cbnz	w1,lable_int
-//  cbnz	x1,lable_int
-//
-//  cbz	w1,lable_int
-//  cbz	x1,lable_int
-//
-//  tbnz	w1,2,lable_int
-//  tbnz	x1,63,lable_int
-//
-//  tbz	w1,2,lable_int
-//  tbz	x1,63,lable_int
-//
-//.section .data,"wa"
-//label_int:
-//  .int 0xffff
-
-//  // register shifted
-//  strb	w0,[x2,x3,lsl 0]
-//  ldrb	w0,[x2,x3,lsl 0]
-//  ldrsb	w0,[x2,x3,lsl 0]
-//  strb	w0,[x2,x3]
-//  ldrb	w0,[x2,x3]
-//  ldrsb	w0,[x2,x3]
-//
-//  // register
-//  strb	w0,[x2,w3,sxtw]
-//  strb	w0,[x2,w3,sxtw 0]
-//  strb	w0,[x2,w3,uxtw]
-//  strb	w0,[x2,w3,uxtw 0]
-//  strb	w0,[x2,x3,sxtx]
-//  strb	w0,[x2,x3,sxtx 0]
-//  ldrb	w0,[x2,w3,sxtw]
-//  ldrb	w0,[x2,w3,sxtw 0]
-//  ldrb	w0,[x2,w3,uxtw]
-//  ldrb	w0,[x2,w3,uxtw 0]
-//  ldrb	w0,[x2,x3,sxtx]
-//  ldrb	w0,[x2,x3,sxtx 0]
-//  ldrsb	w0,[x2,w3,sxtw]
-//  ldrsb	w0,[x2,w3,sxtw 0]
-//  ldrsb	w0,[x2,w3,uxtw]
-//  ldrsb	w0,[x2,w3,uxtw 0]
-//  ldrsb	w0,[x2,x3,sxtx]
-//  ldrsb	w0,[x2,x3,sxtx 0]
-//  ldrsh	w0,[x2,w3,sxtw]
-//  ldrsh	w0,[x2,w3,sxtw 1]
-//  ldrsh	w0,[x2,w3,uxtw]
-//  ldrsh	w0,[x2,w3,uxtw 1]
-//  ldrsh	w0,[x2,x3]
-//  ldrsh	w0,[x2,x3,lsl 1]
-//  ldrsh	w0,[x2,x3,sxtx]
-//  ldrsh	w0,[x2,x3,sxtx 1]
-//  ldr	w0,[x2,w3,sxtw]
-//  ldr	w0,[x2,w3,sxtw 2]
-//  ldr	w0,[x2,w3,uxtw]
-//  ldr	w0,[x2,w3,uxtw 2]
-//  ldr	w0,[x2,x3,sxtx]
-//  ldr	w0,[x2,x3,sxtx 2]
-//  ldr	w0,[x2,x3,lsl 2]
-//  ldr	x0,[x2,w3,sxtw]
-//  ldr	x0,[x2,w3,sxtw 3]
-//  ldr	x0,[x2,w3,uxtw]
-//  ldr	x0,[x2,w3,uxtw 3]
-//  ldr	x0,[x2,x3,sxtx]
-//  ldr	x0,[x2,x3,sxtx 3]
-//  ldr	x0,[x2,x3,lsl 3]
-//  ldr	x0,[x2,x3]
-//  ldr	w0,[x2,x3]
-
-//  // post index
-//  ldr	w0,[sp],+0x8
-//  ldr	x0,[x2],+0x8
-//  ldr	w0,[sp],-0x8
-//  ldr	x0,[x2],-0x8
-//  ldr	w0,[sp],0x8
-//  ldr	x0,[x2],0x8
-//	ldrsb	w0,[x2],0x8
-//  ldrsh	w0,[x2],+0x8
-//  ldrsw	x0,[x2],+0x8
-//
-//  // pre index
-//  ldr	w0,[sp,+0x8]!
-//  ldr	x0,[x2,+0x8]!
-//  ldr	w0,[sp,-0x8]!
-//  ldr	x0,[x2,-0x8]!
-//  ldr	w0,[sp,0x8]!
-//  ldr	x0,[x2,0x8]!
-//  ldrsb	w0,[x2,+0x8]!
-//  ldrsh	w0,[x2,+0x8]!
-//  ldrsw	x0,[x2,+0x8]!
-//
-//  // unsigned offset
-//  ldr	w0,[sp,+0x8]
-//  ldr	x0,[x2,+0x8]
-//  ldr	w0,[sp]
-//  ldr	x0,[x2]
-//  ldrsb	w0,[x2,+0x8]
-//  ldrsh	w0,[x2,+0x8]
-//  ldrsw	x0,[x2,+0x8]
-
-//label_int:
-//  .int 0xffff
-//
+////label_int:
+////  .int 0xffff
+////
 //// comment
-movk x0,0,lsl 0
+//movk x0,0,lsl 0
 //movk x0,0,lsl 16
 //movk x0,0,lsl 32
 //movk x0,0,lsl 48
@@ -290,25 +292,26 @@ movk x0,0,lsl 0
 //  b.le label_c
 //  b.al label_c
 //  b.nv label_c
-//label_c:
-//
-//blr x1
-//br x1
-//ret
-//ret	x1
-//
-//label_cbnz:
-//  cbnz	w1,label_cbnz
-//  cbnz	x1,label_cbnz
-//
-//label_cbz:
-//  cbz	w1,label_cbz
-//  cbz	x1,label_cbz
-//
-//label_tbnz:
-//  tbnz	w1,2,label_tbnz
-//  tbnz	x1,63,label_tbnz
-//
-//label_tbz:
-//  tbz	w1,2,label_tbz
-//  tbz	x1,63,label_tbz
+label_c:
+label_d:
+
+blr x1
+br x1
+ret
+ret	x1
+
+label_cbnz:
+  cbnz	w1,label_cbnz
+  cbnz	x1,label_cbnz
+
+label_cbz:
+  cbz	w1,label_cbz
+  cbz	x1,label_cbz
+
+label_tbnz:
+  tbnz	w1,2,label_tbnz
+  tbnz	x1,63,label_tbnz
+
+label_tbz:
+  tbz	w1,2,label_tbz
+  tbz	x1,63,label_tbz

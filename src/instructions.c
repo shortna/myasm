@@ -4,6 +4,7 @@
 #include "types.h"
 #include <elf.h>
 #include <string.h>
+#include <stdio.h>
 
 // Static opcodes
 #define SOP_LOGICAL_IMM ((short)36)               // (0b00100100)
@@ -748,7 +749,6 @@ ArmInstruction assembleMoveWide(const Fields *instruction) {
   u8 sh_imm = 0;
   if (instruction->n_fields > 3) {
     if (!parseShift(instruction->fields[3].value, &t)) {
-      printError("unknown Shift type");
       // error here
       return 0;
     }
@@ -921,7 +921,7 @@ InstructionType getInstructionType(const char *mnemonic, Signature *s) {
 
 Signature decodeTokens(const Fields *instruction) {
   Signature s = {0};
-  Argument *s_arr = ((Argument *)&s);
+  Argument *args = ((Argument *)&s);
   u8 i = 1, n = 1;
 
   while (i < instruction->n_fields) {
@@ -931,11 +931,11 @@ Signature decodeTokens(const Fields *instruction) {
       parseRegister(instruction->fields[i].value, &r);
       if (r.n == REGISTER_ZR_SP) {
         if (strcmp(instruction->fields[i].value + 1, "zr") != 0) {
-          s_arr[n] = SP;
+          args[n] = SP;
           break;
         }
       }
-      s_arr[n] = REGISTER;
+      args[n] = REGISTER;
       break;
     }
     case T_LABEL:
@@ -943,24 +943,24 @@ Signature decodeTokens(const Fields *instruction) {
         // error here
         break;
       }
-      s_arr[n] = LABEL;
+      args[n] = LABEL;
       break;
     case T_IMMEDIATE:
-      s_arr[n] = IMMEDIATE;
+      args[n] = IMMEDIATE;
       break;
     case T_SHIFT:
       if (i + 1 < instruction->n_fields &&
           instruction->fields[i + 1].type == T_IMMEDIATE) {
-        s_arr[n] = SHIFT;
+        args[n] = SHIFT;
         break;
       }
       // error here (shift without parameter)
       break;
     case T_EXTEND:
-      s_arr[n] = EXTEND;
+      args[n] = EXTEND;
       break;
     case T_CONDITION:
-      s_arr[n] = CONDITION;
+      args[n] = CONDITION;
       break;
     case T_RSBRACE:
     case T_LSBRACE:
@@ -1040,7 +1040,6 @@ ArmInstruction assemble(const Fields *instruction) {
 ////    addRelocation(, R_AARCH64_LD_PREL_LO19);
     break;
   case NONE:
-    // error here
     return 0;
   }
 

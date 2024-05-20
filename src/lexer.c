@@ -9,7 +9,7 @@
 FILE *SRC = NULL;
 u64 LINE = 0;
 
-TokenType getTokenType(Token *t) {
+TokenType getTokenType(const Token *t) {
   switch (*t->value) {
   case '[':
     return T_RSBRACE;
@@ -19,6 +19,8 @@ TokenType getTokenType(Token *t) {
     return T_BANG;
   case '=':
     return T_EQUAL;
+  case '\n':
+    return T_EOL;
   }
 
   if (parseRegister(t->value, NULL)) {
@@ -79,8 +81,18 @@ u8 getToken(FILE *f, Token *t) {
       }
       __attribute__((fallthrough));
     case '\n':
+      if (i != 0) {
+        fseek(SRC, -1, SEEK_CUR);
+        goto done;
+      }
       LINE++;
-      __attribute__((fallthrough));
+
+      if (ch == EOF) {
+        return 0;
+      }
+
+      t->value[i++] = ch;
+      goto done;
     case ' ':
     case ',':
     case '\t':
@@ -93,7 +105,7 @@ u8 getToken(FILE *f, Token *t) {
         t->value[i++] = ch;
         ch = fgetc(SRC);
         if (i == t->capacity - 2) {
-          resizeToken(t); 
+          resizeToken(t);
         }
       } while (ch != '"' && ch != EOF);
       t->value[i++] = ch;
@@ -124,7 +136,6 @@ u8 getToken(FILE *f, Token *t) {
   }
 
   if (ch == EOF) {
-    LINE = 0;
     return 0;
   }
 

@@ -1,4 +1,6 @@
+#include "myasm.h"
 #include "assemble.h"
+#include "types.h"
 #include <errno.h>
 #include <getopt.h>
 #include <stdio.h>
@@ -13,6 +15,9 @@ static const struct option LONG_OPTIONS[] = {
     {0, 0, 0, 0},
 };
 
+bool ERRORS = false;
+
+const char *source = NULL;
 int main(int argc, char **argv) {
   if (argc == 1) {
     fprintf(stderr, "Please, provide source file");
@@ -33,7 +38,6 @@ int main(int argc, char **argv) {
     }
   }
 
-  const char *source = NULL;
   for (int i = 1; i < argc; i++) {
     if (access(argv[i], F_OK) == 0) {
       if (!out_name || strcmp(out_name, argv[i]) != 0) {
@@ -42,8 +46,8 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (source == 0) {
-    fprintf(stderr, "Please, provide source file");
+  if (source == NULL) {
+    fprintf(stderr, "Please, provide VALID source file\n");
     return EXIT_FAILURE;
   }
 
@@ -79,4 +83,15 @@ void *xrealloc(void *p, size_t size) {
     exit(EXIT_FAILURE);
   }
   return p;
+}
+
+void printError(const char *msg, const Fields *f) {
+  ERRORS = true;
+
+  fprintf(stderr, "%s: %s\n", source, msg);
+  fprintf(stderr, "%s:%lu:%s ", source, LINE, f->fields->value);
+  for (u8 i = 1; i < f->n_fields - 1; i++) {
+    fprintf(stderr, "%s,", f->fields[i].value);
+  }
+  fprintf(stderr, "%s\n", f->fields[f->n_fields - 1].value);
 }

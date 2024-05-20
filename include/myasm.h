@@ -6,7 +6,6 @@
 #include <stddef.h>
 #include <sys/types.h>
 #include <stdbool.h>
-#include <stdio.h>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -18,8 +17,12 @@ typedef int16_t i16;
 typedef int32_t i32;
 typedef int64_t i64;
 
-#define printError(msg) fprintf(stderr, "At %lu %s", LINE, msg)
+struct Fields;
+typedef struct Fields Fields;
+
 extern u64 LINE;
+extern bool ERRORS;
+void printError(const char *msg, const Fields *f); 
 
 void *xmalloc(size_t size);
 void *xcalloc(size_t nmemb, size_t size);

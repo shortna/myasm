@@ -5,9 +5,6 @@
 
 #include "myasm.h"
 
-struct Fields;
-typedef struct Fields Fields;
-
 u32 assemble(const Fields *instruction);
 u8 searchMnemonic(const char *mnemonic);
 

@@ -15,40 +15,21 @@
 #endif
 
 u8 collectLineOfTokens(Fields *f) {
-  static Token LEFTOVER = {0};
-
-  u8 ok;
-  if (LEFTOVER.value) {
-    f->n_fields = 1;
-    copyToken(f->fields, &LEFTOVER);
-  } else {
-    f->n_fields = 0;
+  f->n_fields = 0;
+  u8 ok = getToken(CONTEXT.cur_src, f->fields);
+  while (ok &&
+         (f->fields->type == T_EOL || f->fields->type == T_LABEL_DECLARATION)) {
+    ok = getToken(CONTEXT.cur_src, f->fields);
   }
 
-  do {
+  if (!ok) {
+    return ok;
+  }
+
+  while (ok && f->n_fields != FIELDS_MAX &&
+         f->fields[f->n_fields].type != T_EOL) {
+    f->n_fields++;
     ok = getToken(CONTEXT.cur_src, f->fields + f->n_fields);
-    if (!ok) {
-      break;
-    }
-
-    switch (f->fields[f->n_fields].type) {
-    case T_LABEL_DECLARATION:
-    case T_INSTRUCTION:
-    case T_DIRECTIVE:
-      if (f->n_fields != 0) {
-        copyToken(&LEFTOVER, f->fields + f->n_fields);
-        goto done;
-      }
-      __attribute__((fallthrough));
-    default:
-      f->n_fields++;
-    }
-  } while (ok && f->n_fields != FIELDS_MAX);
-
-done:
-  if (!ok && LEFTOVER.value) {
-    free(LEFTOVER.value);
-    LEFTOVER.value = NULL;
   }
 
   return ok;
@@ -62,14 +43,15 @@ void makeLabels(void) {
   while (getToken(CONTEXT.cur_src, &t)) {
     switch (t.type) {
     case T_LABEL_DECLARATION:
-      if (!addToSym(t.value, pc, 0, ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE), section_ind)) {
-        // error here
+      if (!addToSym(t.value, pc, 0, ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE),
+                    section_ind)) {
+        printError("Label already defined", &(Fields){{t}, 1});
       }
       break;
     case T_INSTRUCTION:
       pc += ARM_INSTRUCTION_SIZE;
       break;
-    case T_DIRECTIVE: 
+    case T_DIRECTIVE:
       switch (searchDirective(t.value + 1)) {
       case D_SECTION:
         section_ind++;
@@ -97,22 +79,22 @@ void makeLabels(void) {
   }
 
   CONTEXT.pc = 0;
+  LINE = 0;
   free(t.value);
 }
 
 u8 makeAssemble(void) {
   Fields f = initFields(TOKEN_SIZE);
-  u8 ret = 0;
   fseek(CONTEXT.out, ELF64_HEADER_SIZE, SEEK_SET);
 
-  do {
-    ret = collectLineOfTokens(&f);
+  u8 ret = collectLineOfTokens(&f);
+  while (ret) {
     switch (f.fields->type) {
     case T_INSTRUCTION: {
       u32 instruction = assemble(&f);
       if (!instruction) {
-        // error here
-        break;
+        //        printError("Unknown instruction", &f);
+        //        break;
       }
       CONTEXT.pc += ARM_INSTRUCTION_SIZE;
       fwrite(&instruction, sizeof(instruction), 1, CONTEXT.out);
@@ -123,13 +105,21 @@ u8 makeAssemble(void) {
         CONTEXT.cur_sndx++;
       }
       if (!execDirective(&f)) {
-        // error here
+        printError("Unknown directive", &f);
+      }
+      break;
+    case T_LABEL:
+      if (*f.fields->value == '.') {
+        printError("Unknown directive", &f);
+      } else {
+        printError("Unknown instruction", &f);
       }
       break;
     default:
       NULL;
     }
-  } while (ret);
+    ret = collectLineOfTokens(&f);
+  }
 
   freeFields(&f);
   return 1;
@@ -142,10 +132,10 @@ u8 make(const char *sources, const char *out_name) {
     strcpy((char *)out_name, "a.out");
   }
 
-//  CONTEXT.out = tmpfile();
-  CONTEXT.out = fopen(out_name, "w");
+  CONTEXT.out = tmpfile();
   if (!CONTEXT.out) {
-    fprintf(stderr, "Failed to open tmp file. Error: %s\n", strerror(errno));
+    fprintf(stderr, "Failed to open internal file. Error: %s\n",
+            strerror(errno));
     return 0;
   }
 
@@ -169,6 +159,23 @@ u8 make(const char *sources, const char *out_name) {
     // error here
   }
   fclose(CONTEXT.cur_src);
+
+  if (!ERRORS) {
+    FILE *out = fopen(out_name, "w");
+    if (!out) {
+      fclose(CONTEXT.out);
+      fprintf(stderr, "Failed to open %s file. Error: %s\n", out_name,
+              strerror(errno));
+      return 0;
+    }
+    fseek(CONTEXT.out, 0, SEEK_SET);
+    fseek(out, 0, SEEK_SET);
+    int ch;
+    while ((ch = fgetc(CONTEXT.out)) != EOF) {
+      fputc(ch, out);
+    }
+    fclose(out);
+  }
   fclose(CONTEXT.out);
 
   freeSymoblTable();

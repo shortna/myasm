@@ -11,7 +11,7 @@ CFLAGS := -std=c11 -g -Wpedantic -Wall -Wextra -I $(INCLUDE_DIR) \
 
 CC := clang
 
-.PHONY: all clean test crosscompile
+.PHONY: all clean test
 
 all: $(TARGET_DIR) $(TARGET)
 
