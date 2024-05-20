@@ -21,7 +21,6 @@ typedef enum {
   SXTH,
   SXTW,
   SXTX,
-  LSL,
 } ExtendType;
 
 struct ExtendMap {

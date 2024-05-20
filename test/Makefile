@@ -8,6 +8,7 @@ MYASM := ../build/myasm
 
 OUT_MINE := text_mine
 OUT_TEST := text_test
+XXD := xxd -b -c 4
 
 .PHONY: all clean assemble_with_mine assemble_with_test test
 all: test
@@ -24,7 +25,7 @@ assemble_with_test: $(TEST_FILE)
 	$(OBJCOPY) -O binary --only-section=.text $@ $(OUT_TEST)
 
 test: assemble_with_mine assemble_with_test 
-	diff <(xxd $(OUT_MINE)) <(xxd $(OUT_TEST))
+	diff <($(XXD) $(OUT_MINE)) <($(XXD) $(OUT_TEST))
 	
 clean:
 	$(RM) $(OUT_MINE) $(OUT_TEST) assemble_with_mine assemble_with_test test

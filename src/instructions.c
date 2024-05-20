@@ -282,7 +282,7 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {
 
   u8 size = 0;
   const char instruction_postfix =
-      instruction->fields[0].value[strlen(instruction->fields[0].value) - 1];
+      instruction->fields->value[strlen(instruction->fields->value) - 1];
 
   switch (instruction_postfix) {
   case 'b':
@@ -303,62 +303,90 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {
     break;
   }
 
-  i8 arg_type = -1;
-  u8 arg_ind = 0;
-  for (u8 i = 1; i < instruction->n_fields; i++) {
-    if (instruction->fields[i].type == T_SHIFT ||
-        instruction->fields[i].type == T_EXTEND) {
-      arg_type = instruction->fields[i].type;
-      arg_ind = i;
-    }
-  }
-
-  if (arg_type == T_SHIFT) {
-    ShiftType sh_t;
-    if (!parseShift(instruction->fields[arg_ind].value, &sh_t)) {
-      // error here
-      return 0;
-    }
-    if (sh_t != SH_LSL) {
-      // error here
-      return 0;
-    }
-  }
-
   bool signed_ = instruction->fields->value[3] == 's';
   // "strb", "ldrb", "strh", "ldrh" - accepts as Rt only 32 bit register
-  if (!signed_ && (size < 2 && Rt.extended)) {
+  if (!signed_ && size < 2 && Rt.extended) {
     // error here
     return 0;
   }
 
-  u8 opc = 0;
+  u8 opc = 1;
   if (*instruction->fields->value == 'l') {
-    opc = 1;
+    opc |= 2;
   }
   if (signed_) {
-    opc = 2 | (1 ^ Rt.extended);
+    opc |= 4 | (2 ^ Rt.extended);
   }
-  // opc is two bits but before theres one bit that always 1
-  // opc is 3 bits now, with 1 at start
-  opc = (opc << 1) | 1;
 
-  // same thing, but this time at start 0b10
   u8 S = 2;
-  u8 option = 0;
-  // assemble of instructions without shift
-  if (size != 0) {
-    if (arg_type == -1) {
-      option = 3;
-    } else {
-      if (instruction->fields[arg_ind + 1].type == T_IMMEDIATE) {
+  TokenType arg;
+  u8 option = 2 | Rm.extended;
+  if ((arg = instruction->fields[5].type) != T_LSBRACE) {
+    ExtendType ex;
+    ShiftType sh;
+    u8 imm = 0;
+    if (arg == T_SHIFT) {
+      if (!parseShift(instruction->fields[5].value, &sh)) {
+        // error here
+        return 0;
+      }
+      if (sh != SH_LSL) {
+        // error here
+        return 0;
+      }
+      if (size == 0) {
+        if (!Rm.extended || instruction->fields[6].type != T_IMMEDIATE) {
+          // error here
+          return 0;
+        }
+      }
+    } else if (arg == T_EXTEND) {
+      if (!parseExtend(instruction->fields[5].value, &ex)) {
+        // error here
+        return 0;
+      }
+      switch (ex) {
+      case UXTW:
+      case SXTW:
+        if (Rm.extended) {
+          // error here
+          return 0;
+        }
+        option = 2;
+        if (ex == SXTW) {
+          option = BIT(2) | option;
+        }
+        break;
+      case SXTX:
+        if (!Rm.extended) {
+          // error here
+          return 0;
+        }
+        option = 7;
+        break;
+      default:
+        // error here
+        return 0;
+      }
+    }
+    if (instruction->fields[6].type == T_IMMEDIATE) {
+      if (!parseImmediateU8(instruction->fields[6].value, &imm)) {
+        // error here
+        return 0;
+      }
+      if (imm != size && imm != 0) {
+        // error here
+        return 0;
+      }
+      if (imm == size) {
+        S = BIT(2) | S;
       }
     }
   }
 
   assembled = ((u32)size << 30) | ((u32)SOP_LDR_STR_REG << 24) |
               ((u32)opc << 21) | ((u32)Rm.n << 16) | ((u32)option << 13) |
-              ((u32)S << 10) | ((u32)Rn.n << 5) | ((u32)Rt.n);
+              ((u32)S << 10) | ((u32)Rn.n << 5) | Rt.n;
   return assembled;
 }
 
@@ -553,7 +581,24 @@ ArmInstruction assemblePcRelAddressing(const Fields *instruction) {
     return 0;
   }
 
-  assembled = 0;
+  const u8 offset_size = 21;
+  i32 offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
+  if (!checkBounds(offset, offset_size)) {
+    // error here
+    return 0;
+  }
+
+  offset = GENMASK(offset_size) & offset;
+  if (offset < 0) {
+    offset |= BIT(offset_size - 1);
+  }
+
+  u8 op = instructionIndex(PCRELADDRESSING, instruction->fields->value);
+  u8 immlo = offset & 3; // low 2 bits
+  u32 immhi = offset & (u32)-4; // remove low 2 bits
+
+  assembled = ((u32)op << 31) | ((u32)immlo << 29) | ((u32)SOP_PC_REl << 24) |
+              ((u32)immhi << 5) | Rd.n;
   return assembled;
 }
 
@@ -954,7 +999,7 @@ Signature decodeTokens(const Fields *instruction) {
         args[n] = SHIFT;
         break;
       }
-      // error here (shift without parameter)
+      printError("Shift without parameter", instruction);
       break;
     case T_EXTEND:
       args[n] = EXTEND;
@@ -1037,7 +1082,7 @@ ArmInstruction assemble(const Fields *instruction) {
     break;
   case LDR_LITERAL:
     i = assembleLdrLiteral(instruction);
-////    addRelocation(, R_AARCH64_LD_PREL_LO19);
+//    addRelocation(, R_AARCH64_LD_PREL_LO19);
     break;
   case NONE:
     return 0;
