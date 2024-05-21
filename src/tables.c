@@ -21,8 +21,15 @@ typedef struct ShdrTable {
   u64 capacity;
 } ShdrTable;
 
-typedef struct RelocationTable {
+typedef struct RelocationSection {
   Elf64_Rela *items;
+  u64 count;
+  u64 capacity;
+  u8 shndx;
+} RelocationSection;
+
+typedef struct RelocationTable {
+  RelocationSection *sections;
   u64 count;
   u64 capacity;
 } RelocationTable;
@@ -54,9 +61,16 @@ void initShdrTable(void) {
 }
 
 void initRelocationTable(void) {
-  RELOCATIONS.items = xmalloc(TALBE_START_SIZE * sizeof(*RELOCATIONS.items));
   RELOCATIONS.capacity = TALBE_START_SIZE;
-  RELOCATIONS.count = 0;
+  RELOCATIONS.sections =
+      xmalloc(RELOCATIONS.capacity * sizeof(*RELOCATIONS.sections));
+  for (u8 i = 0; i < TALBE_START_SIZE; i++) {
+    RELOCATIONS.sections[i].items =
+        xmalloc(TALBE_START_SIZE * sizeof(*RELOCATIONS.sections->items));
+    RELOCATIONS.sections[i].capacity = TALBE_START_SIZE;
+    RELOCATIONS.sections[i].count = 0;
+    RELOCATIONS.sections[i].shndx = 0;
+  }
 }
 
 void freeSymoblTable(void) {
@@ -69,7 +83,12 @@ void freeShdrTable(void) {
   free(SECTIONS.shstrtab);
 }
 
-void freeRelocationTable(void) { free(RELOCATIONS.items); }
+void freeRelocationTable(void) {
+  for (u64 i = 0; i < RELOCATIONS.capacity; i++) {
+    free(RELOCATIONS.sections[i].items);
+  }
+  free(RELOCATIONS.sections);
+}
 
 i64 searchTable(const char *needle, const char *strtable, u64 count) {
   strtable++; // skip first entry cause its always \0
@@ -121,10 +140,18 @@ void resizeShdrTable(void) {
                SECTIONS.capacity * TOKEN_SIZE * sizeof(*SECTIONS.shstrtab));
 }
 
-void resizeRelocations(void) {
+void resizeRelocationsTable(void) {
   RELOCATIONS.capacity *= 2;
-  RELOCATIONS.items = xrealloc(
-      RELOCATIONS.items, RELOCATIONS.capacity * sizeof(*RELOCATIONS.items));
+  RELOCATIONS.sections = xrealloc(RELOCATIONS.sections,
+                                  RELOCATIONS.capacity * sizeof(RELOCATIONS));
+}
+
+void resizeRelocationsSection(void) {
+  u64 cur = RELOCATIONS.count;
+  RELOCATIONS.sections[cur].capacity *= 2;
+  RELOCATIONS.sections[cur].items =
+      xrealloc(RELOCATIONS.sections + cur,
+               RELOCATIONS.capacity * sizeof(*RELOCATIONS.sections->items));
 }
 
 i64 getLabelPc(const char *needle) {
@@ -133,6 +160,14 @@ i64 getLabelPc(const char *needle) {
     return res;
   }
   return SYMBOLS.items[res].st_value; // return pc
+}
+
+i16 getLabelSection(const char *needle) {
+  i64 res = searchInSym(needle);
+  if (res == -1) {
+    return res;
+  }
+  return SYMBOLS.items[res].st_shndx; // return section index
 }
 
 // concats s to table with delemiter between '\0' them
@@ -199,22 +234,32 @@ u8 addToShdr(const char *name, u32 sh_type, u64 sh_flags, Elf64_Off sh_offset,
   return 1;
 }
 
-u8 addRelocation(u8 label_ind, u64 info) {
-  u8 label_shndx = SYMBOLS.items[label_ind].st_shndx;
-  // is label in current section?
-  if (label_shndx == CONTEXT.cur_sndx) {
-    return 1;
-  }
-
+u8 addRelocation(const char *label, u64 info) {
   if (RELOCATIONS.count == RELOCATIONS.capacity) {
-    resizeRelocations();
+    resizeRelocationsTable();
   }
 
-  Elf64_Rela *item = RELOCATIONS.items + RELOCATIONS.count;
+  i64 label_ind = searchInSym(label);
+  if (label_ind == -1) {
+    return 0;
+  }
+
+  RelocationSection *section = RELOCATIONS.sections + RELOCATIONS.count;
+  if (section->count == section->capacity) {
+    resizeRelocationsSection();
+  }
+  Elf64_Rela *item = section->items + section->count;
+
   item->r_addend = 0;
   item->r_offset = CONTEXT.pc;
   item->r_info = ELF64_R_INFO(SYMBOLS.items[label_ind].st_value, info);
-  RELOCATIONS.count++;
+
+  if (section->count == 0) {
+    RELOCATIONS.count++;
+  }
+
+  section->count++;
+  section->shndx = CONTEXT.cur_sndx;
   return 1;
 }
 
@@ -276,14 +321,38 @@ u64 getLastNonGlobal(void) {
 
 void align(void) {
   for (u64 i = 1; i < SECTIONS.count; i++) {
-    if ((SECTIONS.items[i].sh_type & 0xf) == SHT_PROGBITS) {
+    u64 type = SECTIONS.items[i].sh_type & 0xf;
+    if (type == SHT_PROGBITS) {
       SECTIONS.items[i].sh_addralign = ARM_INSTRUCTION_SIZE;
-    } else if ((SECTIONS.items[i].sh_type & 0xf) == SHT_SYMTAB) {
+    } else if (type == SHT_SYMTAB || type == SHT_RELA) {
       SECTIONS.items[i].sh_addralign = 8;
     } else {
       SECTIONS.items[i].sh_addralign = 1;
     }
   }
+}
+
+void dumpRelocations(void) {
+  char name[TOKEN_SIZE];
+  for (u64 i = 0; i < RELOCATIONS.count; i++) {
+    sprintf(name, ".rela%lu", i);
+    addToShdr(name, SHT_RELA, SHF_INFO_LINK, getSectionsEnd(),
+              SECTIONS.count + 1, RELOCATIONS.sections[i].shndx, 0);
+  }
+}
+
+void backpatch(void) {
+  for (u8 i = 0; i < SECTIONS.count; i++) {
+    SECTIONS.items[i].sh_offset += ELF64_HEADER_SIZE;
+  }
+
+  Elf64_Shdr *section = SECTIONS.items;
+  for (u8 i = 1; i < SECTIONS.count - 1; i++) {
+    section[i].sh_size = section[i + 1].sh_offset - section[i].sh_offset;
+  }
+
+  section[SECTIONS.count - 1].sh_size =
+      CONTEXT.pc - section[SECTIONS.count - 1].sh_offset + ELF64_HEADER_SIZE;
 }
 
 // all entries in SECTIONS must be backpatched
@@ -305,6 +374,11 @@ u8 writeTables(FILE *out) {
 
   align();
 
+  for (u64 i = 0; i < RELOCATIONS.count; i++) {
+    fwrite(RELOCATIONS.sections[i].items, sizeof(*RELOCATIONS.sections->items),
+           RELOCATIONS.sections->count, out);
+  }
+
   fwrite(SYMBOLS.items, sizeof(*SYMBOLS.items), SYMBOLS.count, out);
   fwrite(SYMBOLS.strtab, strtab_size, 1, out);
   fwrite(SECTIONS.shstrtab, shstrtab_size, 1, out);
@@ -312,70 +386,11 @@ u8 writeTables(FILE *out) {
   return 1;
 }
 
-u8 removeDuplicates(void) {
-  Elf64_Shdr *items = SECTIONS.items;
-  for (u64 i = 1; i < SECTIONS.count - 1; i++) {
-    for (u64 j = i + 1; j < SECTIONS.count; j++) {
-      if (items[i].sh_name == items[j].sh_name) {
-        if (items[i].sh_flags != items[j].sh_flags) {
-          error("Section have same name but different flags");
-          fprintf(stderr, "%s\n", SECTIONS.shstrtab + items[i].sh_name);
-        }
-        // add size of second section to first section
-        items[i].sh_size += items[j].sh_size;
-        // move section after first section
-        items[i + 1].sh_offset += items[j].sh_size;
-
-        // remove duplicate
-        for (u64 k = j; k < SECTIONS.count - 1; k++) {
-          memmove(items + k, items + k + 1, sizeof(*items));
-        }
-        SECTIONS.count--;
-      }
-    }
-  }
-
-  return 1;
-}
-
-void sortSections(void) {
-  Elf64_Shdr *items = SECTIONS.items;
-  i64 order[] = {searchInShdr(".text"), searchInShdr(".data"),
-                     searchInShdr(".bss")};
-
-  u8 cur = 1;
-  for (u8 i = 0; i < sizeof(order) / sizeof(*order); i++) {
-    if (order[i] != -1) {
-      Elf64_Shdr tmp = items[cur];
-      items[cur] = items[order[i]];
-      items[order[i]] = tmp;
-      cur++;
-    }
-  }
-
-  for (u8 i = 0; i < SECTIONS.count; i++) {
-    SECTIONS.items[i].sh_offset += ELF64_HEADER_SIZE;
-  }
-}
-
-void backpatch(void) {
-  Elf64_Shdr *section = SECTIONS.items;
-  for (u8 i = 1; i < SECTIONS.count - 1; i++) {
-    section[i].sh_size = section[i + 1].sh_offset - section[i].sh_offset;
-  }
-
-  section[SECTIONS.count - 1].sh_size =
-      CONTEXT.pc - section[SECTIONS.count - 1].sh_offset + ELF64_HEADER_SIZE;
-}
-
 u8 writeElf(FILE *out) {
   if (SECTIONS.count == 1) {
     return 0;
   }
-  if (!removeDuplicates()) {
-    return 0;
-  }
-  sortSections();
+  dumpRelocations();
   backpatch();
 
   writeTables(out);

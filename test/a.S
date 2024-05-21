@@ -44,6 +44,7 @@ _start: // comment
   tbz w1,2,label_tbz
   tbz x1,63,label_tbz
 
+.section .data,"wa"
 label_b:
 label_cbnz:
 label_cbz:

@@ -186,7 +186,7 @@ u8 parseShift(const char *shift, ShiftType *sh) {
 }
 
 u8 parseExtend(const char *extend, ExtendType *ex) {
-  ExtendType ex_t;
+  ExtendType ex_t = -1;
 
   for (size_t i = 0; i < sizeof(EXTENDS) / sizeof(*EXTENDS); i++) {
     if (strcmp(extend, EXTENDS[i].value) == 0) {

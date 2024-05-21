@@ -10,10 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef alloca
-#define alloca(size) __builtin_alloca(size)
-#endif
-
 u8 collectLineOfTokens(Fields *f) {
   f->n_fields = 0;
   u8 ok = getToken(CONTEXT.cur_src, f->fields);

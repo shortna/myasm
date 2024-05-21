@@ -19,11 +19,12 @@ void freeRelocationTable(void);
 u8 addToShdr(const char *name, u32 sh_type, u64 sh_flags, u64 sh_offset,
              u32 sh_link, u32 sh_info, u64 sh_entsize);
 u8 addToSym(const char *name, u64 st_value, u64 st_size, u8 st_info, u8 st_shndx);
-u8 addRelocation(u8 label_ind, u64 info);
+u8 addRelocation(const char *label, u64 info);
 
 i64 searchInSym(const char *needle);
 i64 searchInShdr(const char *needle);
 
+i16 getLabelSection(const char *needle);
 i64 getLabelPc(const char *needle);
 u8 changeBinding(u64 ind, u8 binding);
 

@@ -7,21 +7,21 @@
 #include <stdio.h>
 
 // Static opcodes
-#define SOP_LOGICAL_IMM ((short)36)               // (0b00100100)
-#define SOP_LOGICAL_SH_REG ((short)10)            // (0b00001010)
-#define SOP_MOVE_WIDE ((short)37)                 // (0b00100101)
-#define SOP_ADD_SUB_IMM ((short)34)               // (0b00100010)
-#define SOP_PC_REl ((short)16)                    // (0b00010000)
-#define SOP_EXCEPTIONS ((short)212)               // (0b11010100)
-#define SOP_CONDITIONAL_BRANCH_IMM ((short)84)    // (0b01010100)
-#define SOP_UNCONDITIONAL_BRANCH_IMM ((short)5)   // (0b00000101)
-#define SOP_UNCONDITIONAL_BRANCH_REG ((short)107) // (0b01101011)
-#define SOP_COMPARE_BRANCH ((short)26)            // (0b00011010)
-#define SOP_TEST_BRANCH ((short)27)               // (0b00011011)
-#define SOP_LDR_LITERAL ((short)24)               // (0b00011000)
-#define SOP_LDR_STR_REG ((short)56)               // (0b00111000)
-#define SOP_LDR_STR_IMM ((short)56)               // (0b00111000)
-#define SOP_LDR_STR_UIMM ((short)57)              // (0b00111001)
+#define SOP_LOGICAL_IMM (36)               // (0b00100100)
+#define SOP_LOGICAL_SH_REG (10)            // (0b00001010)
+#define SOP_MOVE_WIDE (37)                 // (0b00100101)
+#define SOP_ADD_SUB_IMM (34)               // (0b00100010)
+#define SOP_PC_REl (16)                    // (0b00010000)
+#define SOP_EXCEPTIONS (212)               // (0b11010100)
+#define SOP_CONDITIONAL_BRANCH_IMM (84)    // (0b01010100)
+#define SOP_UNCONDITIONAL_BRANCH_IMM (5)   // (0b00000101)
+#define SOP_UNCONDITIONAL_BRANCH_REG (107) // (0b01101011)
+#define SOP_COMPARE_BRANCH (26)            // (0b00011010)
+#define SOP_TEST_BRANCH (27)               // (0b00011011)
+#define SOP_LDR_LITERAL (24)               // (0b00011000)
+#define SOP_LDR_STR_REG (56)               // (0b00111000)
+#define SOP_LDR_STR_IMM (56)               // (0b00111000)
+#define SOP_LDR_STR_UIMM (57)              // (0b00111001)
 
 #define BIT(p) (1ull << (p))
 #define GENMASK(x) ((1ull << (x)) - 1ull)
@@ -548,17 +548,24 @@ ArmInstruction assemblePcRelAddressing(const Fields *instruction) {
     errorFields("Registers must have size of 64bits", instruction);
   }
 
-  i64 label_pc = getLabelPc(instruction->fields[2].value);
-  if (label_pc == -1) {
+  i32 offset = 0;
+  i16 label_section = getLabelSection(instruction->fields[2].value);
+  if (label_section == -1) {
     errorFields("Argument 2 - unknown label", instruction);
   }
 
-  const u8 offset_size = 21;
-  i32 offset = label_pc - CONTEXT.pc;
+  if (label_section == CONTEXT.cur_sndx) {
+    i64 label_pc = getLabelPc(instruction->fields[2].value);
 
-  offset = GENMASK(offset_size) & offset;
-  if (offset < 0) {
-    offset |= BIT(offset_size - 1);
+    const u8 offset_size = 21;
+    offset = label_pc - CONTEXT.pc;
+
+    offset = GENMASK(offset_size) & offset;
+    if (offset < 0) {
+      offset |= BIT(offset_size - 1);
+    }
+  } else {
+    addRelocation(instruction->fields[2].value, R_AARCH64_PREL64);
   }
 
   u8 op = instructionIndex(PCRELADDRESSING, instruction->fields->value);
