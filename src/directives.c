@@ -81,7 +81,7 @@ u8 dSection(const Fields *f) {
   return 1;
 }
 
-u8 getDirectiveSize(const char *directive_arg) {
+u64 getDirectiveSize(const char *directive_arg) {
   if (*directive_arg == '"') {
     u64 len = 0;
     directive_arg += 1;
@@ -95,7 +95,7 @@ u8 getDirectiveSize(const char *directive_arg) {
   if (!parseImmediateU64(directive_arg, &n)) {
     return 0;
   }
-  return n * sizeof(0);
+  return n;
 }
 
 u8 dZero(const Fields *f) {
@@ -106,10 +106,12 @@ u8 dZero(const Fields *f) {
   }
 
   int z = 0;
-  for (u64 i = 0; i < n; i++) {
-    fwrite(&z, sizeof(z), 1, CONTEXT.out);
+  if (!ERRORS) {
+    for (u64 i = 0; i < n; i++) {
+      fwrite(&z, 1, 1, CONTEXT.out);
+    }
   }
-  CONTEXT.pc += n * sizeof(z);
+  CONTEXT.pc += n;
   return 1;
 }
 

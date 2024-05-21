@@ -35,6 +35,6 @@ static const struct Directive DIRECTIVES[] = {
 
 DirectiveType searchDirective(const char *name);
 u8 execDirective(Fields *f); 
-u8 getDirectiveSize(const char *directive_arg);
+u64 getDirectiveSize(const char *directive_arg);
 
 #endif

@@ -44,9 +44,7 @@ _start: // comment
   tbz w1,2,label_tbz
   tbz x1,63,label_tbz
 
-.section .data,"wa"
 label_b:
-label_int:
 label_cbnz:
 label_cbz:
 label_tbnz:
@@ -272,4 +270,5 @@ dcps1 0xFFFF
 dcps2 0xFFFF
 dcps3 0xFFFF
 
-
+label_int:
+  .int 0xffff

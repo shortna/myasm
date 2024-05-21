@@ -81,16 +81,6 @@ u8 instructionIndex(InstructionType type, const char *mnemonic) {
   return 0;
 }
 
-// check if (size) bits of signed (n) fits in bounds
-u8 checkBounds(i64 n, u8 size) {
-  i64 mask = GENMASK(size - 1);
-  if (n < 0) {
-    return n > (~mask | 1);
-  }
-
-  return n < mask;
-}
-
 // WHAT THE FUCK
 ArmInstruction assembleLdrStrImm(const Fields *instruction) {
   ArmInstruction assembled = 0;
@@ -379,9 +369,7 @@ ArmInstruction assembleLdrLiteral(const Fields *instruction) {
 
   const u8 offset_size = 19;
   i32 offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
-  if (!checkBounds(offset, offset_size)) {
-    errorFields("Label is out of bounds", instruction);
-  }
+
   offset = GENMASK(offset_size) & offset;
   if (offset < 0) {
     offset |= BIT(offset_size - 1);
@@ -440,9 +428,7 @@ ArmInstruction assembleCompareBranch(const Fields *instruction) {
 
   const u8 offset_size = 19;
   i32 offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
-  if (!checkBounds(offset, offset_size)) {
-    errorFields("Label is out of bounds", instruction);
-  }
+
   offset = GENMASK(offset_size) & offset;
   if (offset < 0) {
     offset |= BIT(offset_size - 1);
@@ -483,9 +469,7 @@ ArmInstruction assembleTestBranch(const Fields *instruction) {
 
   const u8 offset_size = 14;
   i32 offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
-  if (!checkBounds(offset, offset_size)) {
-    errorFields("Label is out of bounds", instruction);
-  }
+
   offset = GENMASK(offset_size) & offset;
   if (offset < 0) {
     offset |= BIT(offset_size - 1);
@@ -514,9 +498,7 @@ ArmInstruction assembleConditionalBranchImm(const Fields *instruction) {
 
   const u8 offset_size = 19;
   i32 offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
-  if (!checkBounds(offset, offset_size)) {
-    errorFields("Label is out of bounds", instruction);
-  }
+
   offset = GENMASK(offset_size) & offset;
   if (offset < 0) {
     offset |= BIT(offset_size - 1);
@@ -543,9 +525,6 @@ ArmInstruction assembleUnconditionalBranchImm(const Fields *instruction) {
 
   const u8 offset_size = 26;
   i32 offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
-  if (!checkBounds(offset, offset_size)) {
-    errorFields("Label is out of bounds", instruction);
-  }
 
   offset = GENMASK(offset_size) & offset;
   if (offset < 0) {
@@ -575,10 +554,7 @@ ArmInstruction assemblePcRelAddressing(const Fields *instruction) {
   }
 
   const u8 offset_size = 21;
-  i32 offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
-  if (!checkBounds(offset, offset_size)) {
-    errorFields("Label is out of bounds", instruction);
-  }
+  i32 offset = label_pc - CONTEXT.pc;
 
   offset = GENMASK(offset_size) & offset;
   if (offset < 0) {
@@ -587,7 +563,7 @@ ArmInstruction assemblePcRelAddressing(const Fields *instruction) {
 
   u8 op = instructionIndex(PCRELADDRESSING, instruction->fields->value);
   u8 immlo = offset & 3; // low 2 bits
-  u32 immhi = offset & (u32)-4; // remove low 2 bits
+  u32 immhi = offset >> 2; // remove low 2 bits
 
   // return 0 so makeAssemble do not write to file
   if (ERRORS) {
