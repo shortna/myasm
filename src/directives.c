@@ -7,14 +7,17 @@
 #include <string.h>
 
 u8 dGlobal(const Fields *f) {
-  if (f->n_fields != 2) {
-    // error here
+  if (f->n_fields < 2) {
+    errorFields("Please specify label name", f);
+    return 0;
+  } else if (f->n_fields > 2) {
+    errorFields("Too many arguments", f);
     return 0;
   }
 
-  ssize_t n = searchInSym(f->fields[1].value);
+  i64 n = searchInSym(f->fields[1].value);
   if (n == -1) {
-    // error here
+    errorToken("Unknown label", f->fields + 1);
     return 0;
   }
 
@@ -60,13 +63,17 @@ u8 decodeFlags(const char *flags, u64 *res) {
 }
 
 u8 dSection(const Fields *f) {
-  if (f->n_fields != 3) {
-    // error here
+  if (f->n_fields < 3) {
+    errorFields("Incorrect directive format", f);
+    return 0;
+  } else if(f->n_fields > 3) {
+    errorFields("Too many arguments", f);
     return 0;
   }
 
   u64 flags;
   if (!decodeFlags(f->fields[2].value, &flags)) {
+    errorToken("Invalid section flags", f->fields + 2);
     return 0;
   }
 
@@ -94,6 +101,7 @@ u8 getDirectiveSize(const char *directive_arg) {
 u8 dZero(const Fields *f) {
   u64 n;
   if (!parseImmediateU64(f->fields[1].value, &n)) {
+    errorToken("Invalid argument or out of range", f->fields + 1);
     return 0;
   }
 
@@ -108,6 +116,7 @@ u8 dZero(const Fields *f) {
 u8 dByte(const Fields *f) {
   u8 n;
   if (!parseImmediateU8(f->fields[1].value, &n)) {
+    errorToken("Invalid argument or out of range", f->fields + 1);
     return 0;
   }
 
@@ -119,6 +128,7 @@ u8 dByte(const Fields *f) {
 u8 dInt(const Fields *f) {
   u32 n;
   if (!parseImmediateU32(f->fields[1].value, &n)) {
+    errorToken("Invalid argument or out of range", f->fields + 1);
     return 0;
   }
 
@@ -164,6 +174,7 @@ u8 execDirective(Fields *f) {
 
   switch (t) {
   case D_NONE:
+    errorFields("Unknown directive", f);
     return 0;
   case D_GLOBAL:
     return dGlobal(f);
@@ -177,7 +188,6 @@ u8 execDirective(Fields *f) {
     return dAscii(f);
   case D_ASCIIZ:
     return dAsciiz(f);
-    break;
   case D_ZERO:
     return dZero(f);
   }

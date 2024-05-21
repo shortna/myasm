@@ -9,7 +9,48 @@ _start: // comment
   ldr x0,label_int
   ldrsw x0,label_int
 
+  b label_b
+  bl label_b
+  b.eq label_b
+  b.ne label_b
+  b.cs label_b
+  b.cc label_b
+  b.mi label_b
+  b.pl label_b
+  b.vs label_b
+  b.vc label_b
+  b.hi label_b
+  b.ls label_b
+  b.ge label_b
+  b.lt label_b
+  b.gt label_b
+  b.le label_b
+  b.al label_b
+  b.nv label_b
+
+  blr x1
+  br x1
+  ret
+  ret x1
+
+  cbnz w1,label_cbnz
+  cbnz x1,label_cbnz
+
+  cbz w1,label_cbz
+  cbz x1,label_cbz
+
+  tbnz w1,2,label_tbnz
+  tbnz x1,63,label_tbnz
+  tbz w1,2,label_tbz
+  tbz x1,63,label_tbz
+
+.section .data,"wa"
+label_b:
 label_int:
+label_cbnz:
+label_cbz:
+label_tbnz:
+label_tbz:
 
   // register shifted
   strb w0,[x2,x3,lsl 0]
@@ -231,63 +272,4 @@ dcps1 0xFFFF
 dcps2 0xFFFF
 dcps3 0xFFFF
 
-label_b:
-  b label_b
-  bl label_b
-  b.eq label_b
-  b.ne label_b
-  b.cs label_b
-  b.cc label_b
-  b.mi label_b
-  b.pl label_b
-  b.vs label_b
-  b.vc label_b
-  b.hi label_b
-  b.ls label_b
-  b.ge label_b
-  b.lt label_b
-  b.gt label_b
-  b.le label_b
-  b.al label_b
-  b.nv label_b
 
-  b label_c
-  bl label_c
-  b.eq label_c
-  b.ne label_c
-  b.cs label_c
-  b.cc label_c
-  b.mi label_c
-  b.pl label_c
-  b.vs label_c
-  b.vc label_c
-  b.hi label_c
-  b.ls label_c
-  b.ge label_c
-  b.lt label_c
-  b.gt label_c
-  b.le label_c
-  b.al label_c
-  b.nv label_c
-label_c:
-
-blr x1
-br x1
-ret
-ret x1
-
-label_cbnz:
-  cbnz w1,label_cbnz
-  cbnz x1,label_cbnz
-
-label_cbz:
-  cbz w1,label_cbz
-  cbz x1,label_cbz
-
-label_tbnz:
-  tbnz w1,2,label_tbnz
-  tbnz x1,63,label_tbnz
-
-label_tbz:
-  tbz w1,2,label_tbz
-  tbz x1,63,label_tbz

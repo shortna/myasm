@@ -21,11 +21,11 @@ u8 addToShdr(const char *name, u32 sh_type, u64 sh_flags, u64 sh_offset,
 u8 addToSym(const char *name, u64 st_value, u64 st_size, u8 st_info, u8 st_shndx);
 u8 addRelocation(u8 label_ind, u64 info);
 
-ssize_t searchInSym(const char *needle);
-ssize_t searchInShdr(const char *needle);
+i64 searchInSym(const char *needle);
+i64 searchInShdr(const char *needle);
 
-ssize_t getLabelPc(const char *needle);
-u8 changeBinding(size_t ind, u8 binding);
+i64 getLabelPc(const char *needle);
+u8 changeBinding(u64 ind, u8 binding);
 
 u8 writeElf(FILE *out);
 

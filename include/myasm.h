@@ -1,10 +1,8 @@
 #ifndef MYASM_MAIN
 #define MYASM_MAIN
 
-#include <assert.h>
 #include <inttypes.h>
 #include <stddef.h>
-#include <sys/types.h>
 #include <stdbool.h>
 
 typedef uint8_t u8;
@@ -20,9 +18,15 @@ typedef int64_t i64;
 struct Fields;
 typedef struct Fields Fields;
 
+struct Token;
+typedef struct Token Token;
+
 extern u64 LINE;
 extern bool ERRORS;
-void printError(const char *msg, const Fields *f); 
+
+void errorFields(const char *msg, const Fields *f); 
+void errorToken(const char *msg, const Token *t); 
+void error(const char *msg); 
 
 void *xmalloc(size_t size);
 void *xcalloc(size_t nmemb, size_t size);

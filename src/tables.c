@@ -10,21 +10,21 @@
 typedef struct SymTable {
   char *strtab;
   Elf64_Sym *items;
-  size_t count;
-  size_t capacity;
+  u64 count;
+  u64 capacity;
 } SymTable;
 
 typedef struct ShdrTable {
   char *shstrtab;
   Elf64_Shdr *items;
-  size_t count;
-  size_t capacity;
+  u64 count;
+  u64 capacity;
 } ShdrTable;
 
 typedef struct RelocationTable {
   Elf64_Rela *items;
-  size_t count;
-  size_t capacity;
+  u64 count;
+  u64 capacity;
 } RelocationTable;
 
 static SymTable SYMBOLS = {0};
@@ -71,9 +71,9 @@ void freeShdrTable(void) {
 
 void freeRelocationTable(void) { free(RELOCATIONS.items); }
 
-ssize_t searchTable(const char *needle, const char *strtable, size_t count) {
+i64 searchTable(const char *needle, const char *strtable, u64 count) {
   strtable++; // skip first entry cause its always \0
-  size_t i = 1;
+  u64 i = 1;
   while (i < count) {
     if (strcmp(needle, strtable) == 0) {
       return i;
@@ -84,21 +84,21 @@ ssize_t searchTable(const char *needle, const char *strtable, size_t count) {
   return -1;
 }
 
-ssize_t searchInSym(const char *needle) {
+i64 searchInSym(const char *needle) {
   if (!needle) {
     return -1;
   }
 
-  ssize_t res = searchTable(needle, SYMBOLS.strtab, SYMBOLS.count);
+  i64 res = searchTable(needle, SYMBOLS.strtab, SYMBOLS.count);
   return res;
 }
 
-ssize_t searchInShdr(const char *needle) {
+i64 searchInShdr(const char *needle) {
   if (!needle) {
     return -1;
   }
 
-  ssize_t res = searchTable(needle, SECTIONS.shstrtab, SECTIONS.count);
+  i64 res = searchTable(needle, SECTIONS.shstrtab, SECTIONS.count);
   return res;
 }
 
@@ -127,8 +127,8 @@ void resizeRelocations(void) {
       RELOCATIONS.items, RELOCATIONS.capacity * sizeof(*RELOCATIONS.items));
 }
 
-ssize_t getLabelPc(const char *needle) {
-  ssize_t res = searchInSym(needle);
+i64 getLabelPc(const char *needle) {
+  i64 res = searchInSym(needle);
   if (res == -1) {
     return res;
   }
@@ -136,9 +136,9 @@ ssize_t getLabelPc(const char *needle) {
 }
 
 // concats s to table with delemiter between '\0' them
-u8 concatStrs(char *table, const char *s, size_t count) {
+u8 concatStrs(char *table, const char *s, u64 count) {
   table++;
-  size_t i = 1;
+  u64 i = 1;
   while (i < count) {
     table += strlen(table) + 1;
     i++;
@@ -148,11 +148,11 @@ u8 concatStrs(char *table, const char *s, size_t count) {
   return 1;
 }
 
-size_t getStringTableSize(const char *table);
+u64 getStringTableSize(const char *table);
 
 u8 addToSym(const char *name, Elf64_Addr st_value, u64 st_size, u8 st_info,
             u8 st_shndx) {
-  ssize_t res = searchInSym(name);
+  i64 res = searchInSym(name);
   if (res != -1) {
     return 0;
   }
@@ -175,7 +175,7 @@ u8 addToSym(const char *name, Elf64_Addr st_value, u64 st_size, u8 st_info,
 u8 addToShdr(const char *name, u32 sh_type, u64 sh_flags, Elf64_Off sh_offset,
              u32 sh_link, u32 sh_info, u64 sh_entsize) {
 
-  ssize_t res = searchInShdr(name);
+  i64 res = searchInShdr(name);
   if (res != -1) {
     return 0;
   }
@@ -218,7 +218,7 @@ u8 addRelocation(u8 label_ind, u64 info) {
   return 1;
 }
 
-u8 changeBinding(size_t ind, u8 binding) {
+u8 changeBinding(u64 ind, u8 binding) {
   if (ind >= SYMBOLS.count) {
     return 0;
   }
@@ -228,7 +228,7 @@ u8 changeBinding(size_t ind, u8 binding) {
   return 1;
 }
 
-size_t getStringTableSize(const char *table) {
+u64 getStringTableSize(const char *table) {
   const char *table_s = table;
   table++;
   while (*table) {
@@ -237,7 +237,7 @@ size_t getStringTableSize(const char *table) {
   return table - table_s;
 }
 
-size_t getSectionsEnd(void) {
+u64 getSectionsEnd(void) {
   return SECTIONS.items[SECTIONS.count - 1].sh_offset +
          SECTIONS.items[SECTIONS.count - 1].sh_size;
 }
@@ -264,9 +264,9 @@ u8 writeHeader(FILE *out) {
   return 1;
 }
 
-size_t getLastNonGlobal(void) {
-  size_t ind = 0;
-  for (size_t i = 0; i < SYMBOLS.count; i++) {
+u64 getLastNonGlobal(void) {
+  u64 ind = 0;
+  for (u64 i = 0; i < SYMBOLS.count; i++) {
     if ((SYMBOLS.items[i].st_info & (STB_GLOBAL << 4)) == 0) {
       ind = i;
     }
@@ -275,7 +275,7 @@ size_t getLastNonGlobal(void) {
 }
 
 void align(void) {
-  for (size_t i = 1; i < SECTIONS.count; i++) {
+  for (u64 i = 1; i < SECTIONS.count; i++) {
     if ((SECTIONS.items[i].sh_type & 0xf) == SHT_PROGBITS) {
       SECTIONS.items[i].sh_addralign = ARM_INSTRUCTION_SIZE;
     } else if ((SECTIONS.items[i].sh_type & 0xf) == SHT_SYMTAB) {
@@ -288,9 +288,9 @@ void align(void) {
 
 // all entries in SECTIONS must be backpatched
 u8 writeTables(FILE *out) {
-  size_t symtab_size = sizeof(*SYMBOLS.items) * SYMBOLS.count;
-  size_t strtab_size = getStringTableSize(SYMBOLS.strtab);
-  size_t sh_info = getLastNonGlobal() + 1;
+  u64 symtab_size = sizeof(*SYMBOLS.items) * SYMBOLS.count;
+  u64 strtab_size = getStringTableSize(SYMBOLS.strtab);
+  u64 sh_info = getLastNonGlobal() + 1;
 
   addToShdr(".symtab", SHT_SYMTAB, 0, getSectionsEnd(), SECTIONS.count + 1,
             sh_info, sizeof(*SYMBOLS.items));
@@ -300,7 +300,7 @@ u8 writeTables(FILE *out) {
   SECTIONS.items[SECTIONS.count - 1].sh_size = strtab_size;
 
   addToShdr(".shstrtab", SHT_STRTAB, 0, getSectionsEnd(), 0, 0, 0);
-  size_t shstrtab_size = getStringTableSize(SECTIONS.shstrtab);
+  u64 shstrtab_size = getStringTableSize(SECTIONS.shstrtab);
   SECTIONS.items[SECTIONS.count - 1].sh_size = shstrtab_size;
 
   align();
@@ -314,12 +314,12 @@ u8 writeTables(FILE *out) {
 
 u8 removeDuplicates(void) {
   Elf64_Shdr *items = SECTIONS.items;
-  for (size_t i = 1; i < SECTIONS.count - 1; i++) {
-    for (size_t j = i + 1; j < SECTIONS.count; j++) {
+  for (u64 i = 1; i < SECTIONS.count - 1; i++) {
+    for (u64 j = i + 1; j < SECTIONS.count; j++) {
       if (items[i].sh_name == items[j].sh_name) {
         if (items[i].sh_flags != items[j].sh_flags) {
-          // error here
-          return 0;
+          error("Section have same name but different flags");
+          fprintf(stderr, "%s\n", SECTIONS.shstrtab + items[i].sh_name);
         }
         // add size of second section to first section
         items[i].sh_size += items[j].sh_size;
@@ -327,7 +327,7 @@ u8 removeDuplicates(void) {
         items[i + 1].sh_offset += items[j].sh_size;
 
         // remove duplicate
-        for (size_t k = j; k < SECTIONS.count - 1; k++) {
+        for (u64 k = j; k < SECTIONS.count - 1; k++) {
           memmove(items + k, items + k + 1, sizeof(*items));
         }
         SECTIONS.count--;
@@ -340,7 +340,7 @@ u8 removeDuplicates(void) {
 
 void sortSections(void) {
   Elf64_Shdr *items = SECTIONS.items;
-  ssize_t order[] = {searchInShdr(".text"), searchInShdr(".data"),
+  i64 order[] = {searchInShdr(".text"), searchInShdr(".data"),
                      searchInShdr(".bss")};
 
   u8 cur = 1;

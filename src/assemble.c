@@ -45,7 +45,7 @@ void makeLabels(void) {
     case T_LABEL_DECLARATION:
       if (!addToSym(t.value, pc, 0, ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE),
                     section_ind)) {
-        printError("Label already defined", &(Fields){{t}, 1});
+        errorToken("Label already defined", &t);
       }
       break;
     case T_INSTRUCTION:
@@ -55,6 +55,7 @@ void makeLabels(void) {
       switch (searchDirective(t.value + 1)) {
       case D_SECTION:
         section_ind++;
+        pc = 0;
         break;
       case D_BYTE:
         pc += sizeof(char);
@@ -93,8 +94,7 @@ u8 makeAssemble(void) {
     case T_INSTRUCTION: {
       u32 instruction = assemble(&f);
       if (!instruction) {
-        //        printError("Unknown instruction", &f);
-        //        break;
+        break;
       }
       CONTEXT.pc += ARM_INSTRUCTION_SIZE;
       fwrite(&instruction, sizeof(instruction), 1, CONTEXT.out);
@@ -104,15 +104,13 @@ u8 makeAssemble(void) {
       if (searchDirective(f.fields->value + 1) == D_SECTION) {
         CONTEXT.cur_sndx++;
       }
-      if (!execDirective(&f)) {
-        printError("Unknown directive", &f);
-      }
+      execDirective(&f);
       break;
     case T_LABEL:
       if (*f.fields->value == '.') {
-        printError("Unknown directive", &f);
+        errorFields("Unknown directive", &f);
       } else {
-        printError("Unknown instruction", &f);
+        errorFields("Unknown instruction", &f);
       }
       break;
     default:
@@ -156,7 +154,7 @@ u8 make(const char *sources, const char *out_name) {
   makeAssemble();
 
   if (!writeElf(CONTEXT.out)) {
-    // error here
+    error("Unable to write elf objects");
   }
   fclose(CONTEXT.cur_src);
 

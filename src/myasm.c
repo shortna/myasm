@@ -85,13 +85,20 @@ void *xrealloc(void *p, size_t size) {
   return p;
 }
 
-void printError(const char *msg, const Fields *f) {
+void error(const char *msg) {
   ERRORS = true;
+  fprintf(stderr, "%s:%lu: ERROR: %s -- ", source, LINE, msg);
+}
 
-  fprintf(stderr, "%s: %s\n", source, msg);
-  fprintf(stderr, "%s:%lu:%s ", source, LINE, f->fields->value);
-  for (u8 i = 1; i < f->n_fields - 1; i++) {
-    fprintf(stderr, "%s,", f->fields[i].value);
+void errorToken(const char *msg, const Token *t) {
+  error(msg);
+  fprintf(stderr, "%s\n", t->value);
+}
+
+void errorFields(const char *msg, const Fields *f) {
+  error(msg);
+  for (u8 i = 0; i < f->n_fields; i++) {
+    fprintf(stderr, "%s ", f->fields[i].value);
   }
-  fprintf(stderr, "%s\n", f->fields[f->n_fields - 1].value);
+  fprintf(stderr, "\n");
 }
