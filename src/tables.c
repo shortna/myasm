@@ -345,10 +345,11 @@ void align(void) {
 
 void dumpRelocations(void) {
   char name[TOKEN_SIZE];
+  u64 symtab_ind = SECTIONS.count + RELOCATIONS.count;
   for (u64 i = 0; i < RELOCATIONS.count; i++) {
     sprintf(name, ".rela%lu", i);
     addToShdr(name, SHT_RELA, SHF_INFO_LINK, getSectionsEnd(),
-              SECTIONS.count + 1, RELOCATIONS.sections[i].shndx,
+              symtab_ind, RELOCATIONS.sections[i].shndx,
               sizeof(*RELOCATIONS.sections->items));
     SECTIONS.items[SECTIONS.count - 1].sh_size =
         sizeof(*RELOCATIONS.sections->items) * RELOCATIONS.sections[i].count;

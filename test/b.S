@@ -46,6 +46,7 @@ msg:
   .ascii "Hello, World! "
 var:
   .ascii "z"
+  adr x8, arr 
 
 .section .bss,"wa"
 arr:
