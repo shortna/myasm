@@ -345,9 +345,9 @@ void dumpRelocations(void) {
   char name[TOKEN_SIZE];
   for (u64 i = 0; i < RELOCATIONS.count; i++) {
     sprintf(name, ".rela%lu", i);
-    addToShdr(name, SHT_RELA, SHF_INFO_LINK,
-              getSectionsEnd(), SECTIONS.count + 1,
-              RELOCATIONS.sections[i].shndx, sizeof(*RELOCATIONS.sections->items));
+    addToShdr(name, SHT_RELA, SHF_INFO_LINK, getSectionsEnd(),
+              SECTIONS.count + 1, RELOCATIONS.sections[i].shndx,
+              sizeof(*RELOCATIONS.sections->items));
     SECTIONS.items[SECTIONS.count - 1].sh_size =
         sizeof(*RELOCATIONS.sections->items) * RELOCATIONS.sections[i].count;
   }
@@ -363,8 +363,56 @@ void backpatch(void) {
       CONTEXT.size - section[SECTIONS.count - 1].sh_offset;
 }
 
+// swaps left with right
+void swapInSym(u64 left, u64 right) {
+  for (u64 i = 0; i < RELOCATIONS.count; i++) {
+    for (u64 j = 0; j < RELOCATIONS.sections[i].count; j++) {
+      u64 ind = ELF64_R_SYM(RELOCATIONS.sections[i].items[j].r_info);
+      u64 type = ELF64_R_TYPE(RELOCATIONS.sections[i].items[j].r_info);
+      if (ind == left) {
+        RELOCATIONS.sections[i].items[j].r_info = ELF64_R_INFO(right, type);
+      } else if (ind == right) {
+        RELOCATIONS.sections[i].items[j].r_info = ELF64_R_INFO(left, type);
+      }
+    }
+  }
+  Elf64_Sym right_copy = SYMBOLS.items[right];
+  SYMBOLS.items[right] = SYMBOLS.items[left];
+  SYMBOLS.items[left] = right_copy;
+}
+
+void sortSymbols(void) {
+  u8 last = 0;
+  i64 start = searchInSym("_start");
+  if (start != -1 &&
+      ELF64_ST_BIND(SYMBOLS.items[start].st_info) == STB_GLOBAL &&
+      (u64)start != SYMBOLS.count - 1) {
+    swapInSym(start, SYMBOLS.count - 1);
+    last = 1;
+  }
+
+  u64 len = SYMBOLS.count - last - 1;
+  u64 i = 0, end = len;
+  while (i < end) {
+    while (ELF64_ST_BIND(SYMBOLS.items[end].st_info) == STB_GLOBAL && i < end) {
+      end--;
+    }
+
+    if (i == end) {
+      break;
+    }
+
+    if (ELF64_ST_BIND(SYMBOLS.items[i].st_info) == STB_GLOBAL) {
+      swapInSym(i, end);
+    }
+    i++;
+    end--;
+  }
+}
+
 // all entries in SECTIONS must be backpatched
 u8 writeTables(FILE *out) {
+  sortSymbols();
   dumpRelocations();
   u64 symtab_size = sizeof(*SYMBOLS.items) * SYMBOLS.count;
   u64 strtab_size = getStringTableSize(SYMBOLS.strtab);
@@ -396,7 +444,6 @@ u8 writeTables(FILE *out) {
   fwrite(SYMBOLS.strtab, strtab_size, 1, out);
   fwrite(SECTIONS.shstrtab, shstrtab_size, 1, out);
   fwrite(SECTIONS.items, sizeof(*SECTIONS.items), SECTIONS.count, out);
-
   return 1;
 }
 
