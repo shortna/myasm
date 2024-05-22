@@ -86,19 +86,11 @@ ArmInstruction assembleLdrStrImm(const Fields *instruction) {
   ArmInstruction assembled = 0;
 
   Register Rt, Rn;
-  if (!parseRegister(instruction->fields[1].value, &Rt)) {
-    // error here
-    return 0;
-  }
-
-  if (!parseRegister(instruction->fields[3].value, &Rn)) {
-    // error here
-    return 0;
-  }
+  parseRegister(instruction->fields[1].value, &Rt);
+  parseRegister(instruction->fields[3].value, &Rn);
 
   if (!Rn.extended) {
-    // error here
-    return 0;
+    errorFields("Argument 2 must have size of 64bits", instruction);
   }
 
   u8 size = 0;
@@ -121,8 +113,8 @@ ArmInstruction assembleLdrStrImm(const Fields *instruction) {
   case 'w':
     // ldrsw - accepts only 64 bit register
     if (!Rt.extended) {
-      // error here
-      return 0;
+      errorFields("ldrsw - accepts as Argument 1 only 64 bit register",
+                  instruction);
     }
     pimm_cap = 16380;
     size = 2;
@@ -155,12 +147,13 @@ ArmInstruction assembleLdrStrImm(const Fields *instruction) {
     op = SOP_LDR_STR_UIMM;
     if (instruction->n_fields != 5) {
       if (!parseImmediateU32(instruction->fields[imm_ind].value, (u32 *)&imm)) {
-        // error here
-        return 0;
+        errorFields("Immediate must have type uint32", instruction);
       }
       if (imm > pimm_cap || imm % scale != 0) {
-        // error here
-        return 0;
+        errorFields("Immediate must be a multiple of 4 in the range 0 to 4095 "
+                    "for 8bits, 0 to 8190 for 16bits, 0 to 16380 for 32bits and "
+                    "in range 0 to 32760 for 64bits",
+                    instruction);
       }
     }
     imm = GENMASK(12) & (imm / scale);
@@ -168,13 +161,9 @@ ArmInstruction assembleLdrStrImm(const Fields *instruction) {
   // pre index
   // post index
   else {
-    if (!parseImmediateI64(instruction->fields[imm_ind].value, &imm)) {
-      // error here
-      return 0;
-    }
+    parseImmediateI64(instruction->fields[imm_ind].value, &imm);
     if (imm < -256 || imm > 255) {
-      // error here
-      return 0;
+      errorFields("Immediate must be in range -256 to 255", instruction);
     }
     imm = GENMASK(9) & imm; // theres some junk in, why?
     bool pre_indexed =
@@ -189,8 +178,9 @@ ArmInstruction assembleLdrStrImm(const Fields *instruction) {
   bool signed_ = instruction->fields->value[3] == 's';
   // "strb", "ldrb", "strh", "ldrh" - accepts as Rt only 32 bit register
   if (!signed_ && size < 2 && Rt.extended) {
-    // error here
-    return 0;
+    errorFields(
+        "'strb', 'ldrb', 'strh', 'ldrh' - accepts as Argument 1 only 32 bit register",
+        instruction);
   }
 
   u8 opc = 0;
@@ -215,24 +205,12 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {
   ArmInstruction assembled = 0;
   Register Rt, Rn, Rm;
 
-  if (!parseRegister(instruction->fields[1].value, &Rt)) {
-    // error here
-    return 0;
-  }
-
-  if (!parseRegister(instruction->fields[3].value, &Rn)) {
-    // error here
-    return 0;
-  }
-
-  if (!parseRegister(instruction->fields[4].value, &Rm)) {
-    // error here
-    return 0;
-  }
+  parseRegister(instruction->fields[1].value, &Rt);
+  parseRegister(instruction->fields[3].value, &Rn);
+  parseRegister(instruction->fields[4].value, &Rm);
 
   if (!Rn.extended) {
-    // error here
-    return 0;
+    errorFields("Argument 2 must have size of 64bits", instruction);
   }
 
   u8 size = 0;
@@ -248,8 +226,9 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {
     break;
   case 'w':
     if (!Rt.extended) {
-      // error here
-      return 0;
+    errorFields(
+        "ldrsw - accepts as Argument 1 only 64 bit register",
+        instruction);
     }
     size = 2;
     break;
@@ -261,8 +240,9 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {
   bool signed_ = instruction->fields->value[3] == 's';
   // "strb", "ldrb", "strh", "ldrh" - accepts as Rt only 32 bit register
   if (!signed_ && size < 2 && Rt.extended) {
-    // error here
-    return 0;
+    errorFields(
+        "'strb', 'ldrb', 'strh', 'ldrh' - accepts as Argument 1 only 32 bit register",
+        instruction);
   }
 
   u8 opc = 1;
@@ -281,31 +261,24 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {
     ShiftType sh;
     u8 imm = 0;
     if (arg == T_SHIFT) {
-      if (!parseShift(instruction->fields[5].value, &sh)) {
-        // error here
-        return 0;
-      }
+      parseShift(instruction->fields[5].value, &sh);
       if (sh != SH_LSL) {
-        // error here
-        return 0;
+        errorFields("Only 'LSL' shift allowed", instruction);
       }
       if (size == 0) {
         if (!Rm.extended || instruction->fields[6].type != T_IMMEDIATE) {
-          // error here
-          return 0;
+          errorFields("Shift without parameter", instruction);
         }
       }
     } else if (arg == T_EXTEND) {
-      if (!parseExtend(instruction->fields[5].value, &ex)) {
-        // error here
-        return 0;
-      }
+      parseExtend(instruction->fields[5].value, &ex);
       switch (ex) {
       case UXTW:
       case SXTW:
         if (Rm.extended) {
-          // error here
-          return 0;
+          errorFields(
+              "Argument 4 'with UXTW or SXTW shift' must have size of 32bits",
+              instruction);
         }
         option = 2;
         if (ex == SXTW) {
@@ -314,24 +287,24 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {
         break;
       case SXTX:
         if (!Rm.extended) {
-          // error here
-          return 0;
+          errorFields("Argument 4 'with SXTX shift' must have size of 64bits",
+                      instruction);
         }
         option = 7;
         break;
       default:
-        // error here
+        errorFields("Unknown shift", instruction);
         return 0;
       }
     }
     if (instruction->fields[6].type == T_IMMEDIATE) {
       if (!parseImmediateU8(instruction->fields[6].value, &imm)) {
-        // error here
-        return 0;
+        errorFields("Argument 5 must have type uint8", instruction);
       }
       if (imm != size && imm != 0) {
-        // error here
-        return 0;
+        errorFields(
+            "Argument 5 must equals 0 or size specified by instruction",
+            instruction);
       }
       if (imm == size) {
         S = BIT(2) | S;
