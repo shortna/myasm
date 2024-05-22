@@ -111,7 +111,7 @@ label_tbz:
   ldr x0,[x2],-0x8
   ldr w0,[sp],0x8
   ldr x0,[x2],0x8
- ldrsb w0,[x2],0x8
+  ldrsb w0,[x2],0x8
   ldrsh w0,[x2],+0x8
   ldrsw x0,[x2],+0x8
 

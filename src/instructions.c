@@ -35,13 +35,13 @@
 // instruction mnemonic MUST be in order of incresing opc field
 static const Instruction INSTRUCTIONS[] = {
     {{"adr", "adrp"}, PCRELADDRESSING, {2, REGISTER, LABEL}},
-    {{"b.", "bc."}, CONDITIONAL_BRANCH_IMM, {2, CONDITION, LABEL}},
+    {{"b."}, CONDITIONAL_BRANCH_IMM, {2, CONDITION, LABEL}},
     {{"b", "bl"}, UNCONDITIONAL_BRANCH_IMM, {1, LABEL}},
-    {{"br", "blr", "ret"}, UNCONDITIONAL_BRANCH_REG, {1, REGISTER | OPTIONAL}},
     {{"cbz", "cbnz"}, COMPARE_BRANCH, {2, REGISTER, LABEL}},
     {{"tbz", "tbnz"}, TEST_BRANCH, {3, REGISTER, IMMEDIATE, LABEL}},
     {{"ldr", "ldrsw"}, LDR_LITERAL, {2, REGISTER, LABEL}},
 
+    {{"br", "blr", "ret"}, UNCONDITIONAL_BRANCH_REG, {1, REGISTER | OPTIONAL}},
     {{"movn", "movz", "movk"}, MOVEWIDE, {3, REGISTER, IMMEDIATE, SHIFT | OPTIONAL}},
     {{"add", "sub"}, ADDSUB_IMM, {4, REGISTER | SP, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
     {{"adds", "subs"}, ADDSUB_IMM, {4, REGISTER, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
@@ -335,17 +335,23 @@ ArmInstruction assembleLdrLiteral(const Fields *instruction) {
     opc = 0;
   }
 
-  i64 label_pc = getLabelPc(instruction->fields[2].value);
-  if (label_pc == -1) {
+  i32 offset = 0;
+  i16 label_section = getLabelSection(instruction->fields[2].value);
+  if (label_section == -1) {
     errorFields("Argument 2 - unknown label", instruction);
   }
 
-  const u8 offset_size = 19;
-  i32 offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
+  if (label_section == CONTEXT.cur_sndx) {
+    i64 label_pc = getLabelPc(instruction->fields[2].value);
+    const u8 offset_size = 19;
+    offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
 
-  offset = GENMASK(offset_size) & offset;
-  if (offset < 0) {
-    offset |= BIT(offset_size - 1);
+    offset = GENMASK(offset_size) & offset;
+    if (offset < 0) {
+      offset |= BIT(offset_size - 1);
+    }
+  } else {
+    addRelocation(instruction->fields[2].value, R_AARCH64_LD_PREL_LO19);
   }
 
   // return 0 so makeAssemble do not write to file
@@ -394,17 +400,24 @@ ArmInstruction assembleCompareBranch(const Fields *instruction) {
   parseRegister(instruction->fields[1].value, &Rt);
   bool sf = Rt.extended;
 
-  i64 label_pc = getLabelPc(instruction->fields[2].value);
-  if (label_pc == -1) {
+  i32 offset = 0;
+  i16 label_section = getLabelSection(instruction->fields[2].value);
+  if (label_section == -1) {
     errorFields("Argument 2 - unknown label", instruction);
   }
 
-  const u8 offset_size = 19;
-  i32 offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
+  if (label_section == CONTEXT.cur_sndx) {
+    i64 label_pc = getLabelPc(instruction->fields[2].value);
 
-  offset = GENMASK(offset_size) & offset;
-  if (offset < 0) {
-    offset |= BIT(offset_size - 1);
+    const u8 offset_size = 19;
+    offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
+
+    offset = GENMASK(offset_size) & offset;
+    if (offset < 0) {
+      offset |= BIT(offset_size - 1);
+    }
+  } else {
+    addRelocation(instruction->fields[2].value, R_AARCH64_CONDBR19);
   }
 
   u8 op = instructionIndex(COMPARE_BRANCH, instruction->fields[0].value);
@@ -435,17 +448,24 @@ ArmInstruction assembleTestBranch(const Fields *instruction) {
   }
   imm = imm & 0x1f;
 
-  i64 label_pc = getLabelPc(instruction->fields[3].value);
-  if (label_pc == -1) {
+  i32 offset = 0;
+  i16 label_section = getLabelSection(instruction->fields[3].value);
+  if (label_section == -1) {
     errorFields("Argument 3 - unknown label", instruction);
   }
 
-  const u8 offset_size = 14;
-  i32 offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
+  if (label_section == CONTEXT.cur_sndx) {
+    i64 label_pc = getLabelPc(instruction->fields[3].value);
 
-  offset = GENMASK(offset_size) & offset;
-  if (offset < 0) {
-    offset |= BIT(offset_size - 1);
+    const u8 offset_size = 14;
+    offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
+
+    offset = GENMASK(offset_size) & offset;
+    if (offset < 0) {
+      offset |= BIT(offset_size - 1);
+    }
+  } else {
+    addRelocation(instruction->fields[3].value, R_AARCH64_TSTBR14);
   }
 
   u8 op = instructionIndex(TEST_BRANCH, instruction->fields[0].value);
@@ -464,20 +484,27 @@ ArmInstruction assembleConditionalBranchImm(const Fields *instruction) {
   ConditionType c = 0;
   parseCondition(instruction->fields[1].value, &c);
 
-  i64 label_pc = getLabelPc(instruction->fields[2].value);
-  if (label_pc == -1) {
+  i32 offset = 0;
+  i16 label_section = getLabelSection(instruction->fields[2].value);
+  if (label_section == -1) {
     errorFields("Argument 2 - unknown label", instruction);
   }
 
-  const u8 offset_size = 19;
-  i32 offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
+  if (label_section == CONTEXT.cur_sndx) {
+    i64 label_pc = getLabelPc(instruction->fields[2].value);
 
-  offset = GENMASK(offset_size) & offset;
-  if (offset < 0) {
-    offset |= BIT(offset_size - 1);
+    const u8 offset_size = 19;
+    offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
+
+    offset = GENMASK(offset_size) & offset;
+    if (offset < 0) {
+      offset |= BIT(offset_size - 1);
+    }
+  } else {
+    addRelocation(instruction->fields[2].value, R_AARCH64_CONDBR19);
   }
 
-  u8 o = instructionIndex(CONDITIONAL_BRANCH_IMM, instruction->fields[0].value);
+  u8 o = 0;
 
   // return 0 so makeAssemble do not write to file
   if (ERRORS) {
@@ -491,21 +518,30 @@ ArmInstruction assembleConditionalBranchImm(const Fields *instruction) {
 ArmInstruction assembleUnconditionalBranchImm(const Fields *instruction) {
   ArmInstruction assembled = 0;
 
-  i64 label_pc = getLabelPc(instruction->fields[1].value);
-  if (label_pc == -1) {
+  u8 op =
+      instructionIndex(UNCONDITIONAL_BRANCH_IMM, instruction->fields[0].value);
+
+  i32 offset = 0;
+  i16 label_section = getLabelSection(instruction->fields[1].value);
+  if (label_section == -1) {
     errorFields("Argument 1 - unknown label", instruction);
   }
 
-  const u8 offset_size = 26;
-  i32 offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
+  if (label_section == CONTEXT.cur_sndx) {
+    i64 label_pc = getLabelPc(instruction->fields[1].value);
 
-  offset = GENMASK(offset_size) & offset;
-  if (offset < 0) {
-    offset |= BIT(offset_size - 1);
+    const u8 offset_size = 26;
+    offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
+
+    offset = GENMASK(offset_size) & offset;
+    if (offset < 0) {
+      offset |= BIT(offset_size - 1);
+    }
+  } else {
+    addRelocation(instruction->fields[1].value,
+                  op ? R_AARCH64_CALL26 : R_AARCH64_JUMP26);
   }
 
-  u8 op =
-      instructionIndex(UNCONDITIONAL_BRANCH_IMM, instruction->fields[0].value);
   assembled =
       ((u32)op << 31) | ((u32)SOP_UNCONDITIONAL_BRANCH_IMM << 26) | offset;
   return assembled;

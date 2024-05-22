@@ -6,8 +6,8 @@ INCLUDE_DIR := include
 TARGET_DIR := build
 TARGET := myasm
 
-CFLAGS := -std=c11 -g -Wpedantic -Wall -Wextra -I $(INCLUDE_DIR) \
-					-fsanitize=address,pointer-compare,pointer-subtract,leak,undefined,null,bounds,alignment
+CFLAGS := -std=c11 -Wpedantic -Wall -Wextra -I $(INCLUDE_DIR)
+#					-g -fsanitize=address,pointer-compare,pointer-subtract,leak,undefined,null,bounds,alignment
 
 CC := clang
 

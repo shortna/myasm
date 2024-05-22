@@ -147,11 +147,12 @@ void resizeRelocationsTable(void) {
 }
 
 void resizeRelocationsSection(void) {
-  u64 cur = RELOCATIONS.count;
+  u64 cur = RELOCATIONS.count - 1;
   RELOCATIONS.sections[cur].capacity *= 2;
   RELOCATIONS.sections[cur].items =
-      xrealloc(RELOCATIONS.sections + cur,
-               RELOCATIONS.capacity * sizeof(*RELOCATIONS.sections->items));
+      xrealloc(RELOCATIONS.sections[cur].items,
+               RELOCATIONS.sections[cur].capacity *
+                   sizeof(*RELOCATIONS.sections->items));
 }
 
 i64 getLabelPc(const char *needle) {
@@ -263,6 +264,7 @@ u8 addRelocation(const char *label, u64 info) {
 
   Elf64_Rela *item = section->items + section->count;
 
+//  item->r_addend = SYMBOLS.items[label_ind].st_value;
   item->r_addend = 0;
   item->r_offset = CONTEXT.pc;
   item->r_info = ELF64_R_INFO(label_ind, info);
