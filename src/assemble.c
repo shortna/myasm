@@ -99,6 +99,8 @@ u8 makeAssemble(void) {
     case T_DIRECTIVE:
       if (searchDirective(f.fields->value + 1) == D_SECTION) {
         CONTEXT.cur_sndx++;
+        CONTEXT.size += CONTEXT.pc;
+        CONTEXT.pc = 0;
       }
       execDirective(&f);
       break;
@@ -115,6 +117,7 @@ u8 makeAssemble(void) {
     ret = collectLineOfTokens(&f);
   }
 
+  CONTEXT.size += CONTEXT.pc;
   freeFields(&f);
   return 1;
 }

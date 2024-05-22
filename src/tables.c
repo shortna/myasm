@@ -244,19 +244,28 @@ u8 addRelocation(const char *label, u64 info) {
     return 0;
   }
 
-  RelocationSection *section = RELOCATIONS.sections + RELOCATIONS.count;
+  u64 i = 0;
+  while (i < RELOCATIONS.count) {
+    if (RELOCATIONS.sections[i].shndx == CONTEXT.cur_sndx) {
+      break;
+    }
+    i++;
+  }
+
+  if (i == RELOCATIONS.count) {
+    RELOCATIONS.count++;
+  }
+
+  RelocationSection *section = RELOCATIONS.sections + i;
   if (section->count == section->capacity) {
     resizeRelocationsSection();
   }
+
   Elf64_Rela *item = section->items + section->count;
 
   item->r_addend = 0;
   item->r_offset = CONTEXT.pc;
-  item->r_info = ELF64_R_INFO(SYMBOLS.items[label_ind].st_value, info);
-
-  if (section->count == 0) {
-    RELOCATIONS.count++;
-  }
+  item->r_info = ELF64_R_INFO(label_ind, info);
 
   section->count++;
   section->shndx = CONTEXT.cur_sndx;
@@ -336,27 +345,27 @@ void dumpRelocations(void) {
   char name[TOKEN_SIZE];
   for (u64 i = 0; i < RELOCATIONS.count; i++) {
     sprintf(name, ".rela%lu", i);
-    addToShdr(name, SHT_RELA, SHF_INFO_LINK, getSectionsEnd(),
-              SECTIONS.count + 1, RELOCATIONS.sections[i].shndx, 0);
+    addToShdr(name, SHT_RELA, SHF_INFO_LINK,
+              getSectionsEnd(), SECTIONS.count + 1,
+              RELOCATIONS.sections[i].shndx, sizeof(*RELOCATIONS.sections->items));
+    SECTIONS.items[SECTIONS.count - 1].sh_size =
+        sizeof(*RELOCATIONS.sections->items) * RELOCATIONS.sections[i].count;
   }
 }
 
 void backpatch(void) {
-  for (u8 i = 0; i < SECTIONS.count; i++) {
-    SECTIONS.items[i].sh_offset += ELF64_HEADER_SIZE;
-  }
-
   Elf64_Shdr *section = SECTIONS.items;
   for (u8 i = 1; i < SECTIONS.count - 1; i++) {
     section[i].sh_size = section[i + 1].sh_offset - section[i].sh_offset;
   }
 
   section[SECTIONS.count - 1].sh_size =
-      CONTEXT.pc - section[SECTIONS.count - 1].sh_offset + ELF64_HEADER_SIZE;
+      CONTEXT.size - section[SECTIONS.count - 1].sh_offset;
 }
 
 // all entries in SECTIONS must be backpatched
 u8 writeTables(FILE *out) {
+  dumpRelocations();
   u64 symtab_size = sizeof(*SYMBOLS.items) * SYMBOLS.count;
   u64 strtab_size = getStringTableSize(SYMBOLS.strtab);
   u64 sh_info = getLastNonGlobal() + 1;
@@ -374,15 +383,20 @@ u8 writeTables(FILE *out) {
 
   align();
 
+  for (u8 i = 1; i < SECTIONS.count; i++) {
+    SECTIONS.items[i].sh_offset += ELF64_HEADER_SIZE;
+  }
+
   for (u64 i = 0; i < RELOCATIONS.count; i++) {
     fwrite(RELOCATIONS.sections[i].items, sizeof(*RELOCATIONS.sections->items),
-           RELOCATIONS.sections->count, out);
+           RELOCATIONS.sections[i].count, out);
   }
 
   fwrite(SYMBOLS.items, sizeof(*SYMBOLS.items), SYMBOLS.count, out);
   fwrite(SYMBOLS.strtab, strtab_size, 1, out);
   fwrite(SECTIONS.shstrtab, shstrtab_size, 1, out);
   fwrite(SECTIONS.items, sizeof(*SECTIONS.items), SECTIONS.count, out);
+
   return 1;
 }
 
@@ -390,9 +404,7 @@ u8 writeElf(FILE *out) {
   if (SECTIONS.count == 1) {
     return 0;
   }
-  dumpRelocations();
   backpatch();
-
   writeTables(out);
   fseek(out, 0, SEEK_SET);
   writeHeader(out);

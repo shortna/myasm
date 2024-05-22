@@ -77,7 +77,7 @@ u8 dSection(const Fields *f) {
     return 0;
   }
 
-  addToShdr(f->fields[1].value, SHT_PROGBITS, flags, CONTEXT.pc, 0, 0, 0);
+  addToShdr(f->fields[1].value, SHT_PROGBITS, flags, CONTEXT.size, 0, 0, 0);
   return 1;
 }
 

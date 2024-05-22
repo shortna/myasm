@@ -565,7 +565,7 @@ ArmInstruction assemblePcRelAddressing(const Fields *instruction) {
       offset |= BIT(offset_size - 1);
     }
   } else {
-    addRelocation(instruction->fields[2].value, R_AARCH64_PREL64);
+    addRelocation(instruction->fields[2].value, R_AARCH64_ADR_PREL_LO21);
   }
 
   u8 op = instructionIndex(PCRELADDRESSING, instruction->fields->value);
