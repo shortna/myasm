@@ -50,7 +50,7 @@ endif
 > $(CC) $^ $(CFLAGS) -O2 -o $(TARGET_DIR)/$@
 
 install:
-> $(CP) $(TARGET_DIR)/$(TARGET) $(INSTALL_PATH)
+> cp $(TARGET_DIR)/$(TARGET) $(INSTALL_PATH)
 
 clean:
 > $(RM) -r $(TARGET_DIR)
