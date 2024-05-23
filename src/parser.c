@@ -56,7 +56,7 @@ u8 parseRegister(const char *reg, Register *r) {
       return 0;
     }
 
-    if (res >= 0 && res <= 29) {
+    if (res <= 29) {
       n = res;
     }
   }
