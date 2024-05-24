@@ -22,6 +22,8 @@
 #define SOP_LDR_STR_REG (56)               // (0b00111000)
 #define SOP_LDR_STR_IMM (56)               // (0b00111000)
 #define SOP_LDR_STR_UIMM (57)              // (0b00111001)
+#define SOP_CONDITIONAL_COMPARE_REG (210)  // (0b11010010)
+#define SOP_CONDITIONAL_COMPARE_IMM (210)  // (0b11010010)
 
 #define BIT(p) (1ull << (p))
 #define GENMASK(x) ((1ull << (x)) - 1ull)
@@ -50,7 +52,10 @@ static const Instruction INSTRUCTIONS[] = {
     {{"svc", "hvc", "smc", "brk", "hlt", "tcancel"}, EXCEPTION, {1, IMMEDIATE}},
     {{"dcps1", "dcps2", "dcps3"}, EXCEPTION, {1, IMMEDIATE | OPTIONAL}},
     {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_REG, {4, REGISTER, REGISTER | SP, REGISTER, EXTEND | SHIFT | OPTIONAL}},
-    {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_IMM, {3, REGISTER, REGISTER | SP, IMMEDIATE | OPTIONAL}},};
+    {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_IMM, {3, REGISTER, REGISTER | SP, IMMEDIATE | OPTIONAL}},
+    {{"ccmn", "ccmp"}, CONDITIONAL_COMPARE_REG, {4, REGISTER, REGISTER, IMMEDIATE, CONDITION}},
+    {{"ccmn", "ccmp"}, CONDITIONAL_COMPARE_IMM, {4, REGISTER, IMMEDIATE, IMMEDIATE, CONDITION}},
+};
 
 u8 searchMnemonic(const char *mnemonic) {
   for (u64 i = 0; i < sizeof(INSTRUCTIONS) / sizeof(*INSTRUCTIONS); i++) {
@@ -79,6 +84,91 @@ u8 instructionIndex(InstructionType type, const char *mnemonic) {
   }
 
   return 0;
+}
+
+ArmInstruction assembleConditionalCompareImm(const Fields *instruction) {
+  ArmInstruction assembled = 0;
+  
+  Register Rn;
+  parseRegister(instruction->fields[1].value, &Rn);
+
+  bool sf = Rn.extended;
+
+  u8 imm;
+  if (!parseImmediateU8(instruction->fields[2].value, &imm)) {
+    errorFields("Argument 2 must have type uint8", instruction);
+  }
+
+  if (imm >= GENMASK(5)) {
+    errorFields("Argument 2 must be in the range 0 to 31", instruction);
+  }
+
+  u8 imm_nzcv;
+  if (!parseImmediateU8(instruction->fields[3].value, &imm_nzcv)) {
+    errorFields("Argument 3 must have type uint8", instruction);
+  }
+
+  if (imm_nzcv >= 16) {
+    errorFields("Argument 3 must be in the range 0 to 15", instruction);
+  }
+
+  ConditionType cd;
+  parseCondition(instruction->fields[4].value, &cd);
+
+  u8 op = instructionIndex(CONDITIONAL_COMPARE_REG, instruction->fields->value);
+  u8 S = 1;
+
+  // return 0 so makeAssemble do not write to file
+  if (ERRORS) {
+    return 0;
+  }
+  assembled = ((u32)sf << 31) | ((u32)op << 30) | ((u32)S << 29) |
+              ((u32)SOP_CONDITIONAL_COMPARE_IMM << 21) | ((u32)imm << 16) |
+              ((u32)cd << 12) | ((u32)2 << 10) | ((u32)Rn.n << 5) | (0 << 4) |
+              imm_nzcv;
+  return assembled;
+}
+
+ArmInstruction assembleConditionalCompareReg(const Fields *instruction) {
+  ArmInstruction assembled = 0;
+  
+  Register Rn, Rm;
+  parseRegister(instruction->fields[1].value, &Rm);
+  parseRegister(instruction->fields[2].value, &Rn);
+
+  bool sf;
+  if (Rm.extended && Rn.extended) {
+    sf = 1;
+  } else if (!Rm.extended && !Rn.extended) {
+    sf = 0;
+  } else {
+    errorFields("Registers must have same size", instruction);
+  }
+
+  u8 imm_nzcv;
+  if (!parseImmediateU8(instruction->fields[3].value, &imm_nzcv)) {
+    errorFields("Argument 3 must have type uint8", instruction);
+  }
+
+  if (imm_nzcv >= 16) {
+    errorFields("Argument 3 must be in the range 0 to 15", instruction);
+  }
+
+  ConditionType cd;
+  parseCondition(instruction->fields[4].value, &cd);
+
+  u8 op = instructionIndex(CONDITIONAL_COMPARE_REG, instruction->fields->value);
+  u8 S = 1;
+
+  // return 0 so makeAssemble do not write to file
+  if (ERRORS) {
+    return 0;
+  }
+  assembled = ((u32)sf << 31) | ((u32)op << 30) | ((u32)S << 29) | 
+              ((u32)SOP_CONDITIONAL_COMPARE_REG << 21) | ((u32)Rm.n << 16) |
+              ((u32)cd << 12) | ((u32)0 << 10) | ((u32)Rn.n << 5) | (0 << 4) |
+              imm_nzcv;
+  return assembled;
 }
 
 // WHAT THE FUCK
@@ -1043,6 +1133,12 @@ ArmInstruction assemble(const Fields *instruction) {
     break;
   case LDR_LITERAL:
     i = assembleLdrLiteral(instruction);
+    break;
+  case CONDITIONAL_COMPARE_REG:
+    i = assembleConditionalCompareReg(instruction);
+    break;
+  case CONDITIONAL_COMPARE_IMM:
+    i = assembleConditionalCompareImm(instruction);
     break;
   case NONE:
     if (searchMnemonic(instruction->fields->value)) {

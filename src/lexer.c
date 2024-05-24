@@ -127,7 +127,7 @@ u8 getToken(FILE *f, Token *t) {
       }
       __attribute__((fallthrough));
     default:
-      if (i == t->capacity) {
+      if (i == t->capacity - 1) {
         goto done;
       }
       t->value[i++] = ch;

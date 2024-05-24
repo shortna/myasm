@@ -6,6 +6,7 @@ _start:
   ldrb w0, [x8] // get byte from x8
   adr x1, arr   // adr of arr to x2
   movz x2, 25   // counter
+  movz x29, 25, LSL 16 [][][][][]   // counter
 
   begin:
     strb w0,[x1, x2] // strb at x1 + x2

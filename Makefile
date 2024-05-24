@@ -47,7 +47,11 @@ else
         endif
     endif
 endif
+ifndef DEBUG
 > $(CC) $^ $(CFLAGS) -O2 -o $(TARGET_DIR)/$@
+else 
+> $(CC) $^ $(CFLAGS_DEBUG) -o $(TARGET_DIR)/$@
+endif
 
 install:
 > cp $(TARGET_DIR)/$(TARGET) $(INSTALL_PATH)

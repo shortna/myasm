@@ -48,6 +48,8 @@ typedef enum InstructionType {
   LDR_LITERAL,
   LDR_STR_REG,
   LDR_STR_IMM,
+  CONDITIONAL_COMPARE_REG,
+  CONDITIONAL_COMPARE_IMM,
 } InstructionType;
 
 typedef struct Instruction {
