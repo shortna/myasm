@@ -9,6 +9,9 @@
 #define alloca(size) __builtin_alloca(size)
 #endif
 
+#define TOKEN_SIZE (40)
+#define FIELDS_SIZE (10)
+
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;

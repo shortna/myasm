@@ -1,5 +1,4 @@
 #include "types.h"
-#include "lexer.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -7,7 +6,7 @@ Context CONTEXT = {0};
 
 Fields initFields(size_t size_of_field) {
   Fields f = {0};
-  for (u8 i = 0; i < FIELDS_MAX; i++) {
+  for (u8 i = 0; i < FIELDS_SIZE; i++) {
     f.fields[i] = initToken(size_of_field);
   }
   return f;
@@ -17,7 +16,7 @@ void freeFields(Fields *fields) {
   if (!fields) {
     return;
   }
-  for (u8 i = 0; i < FIELDS_MAX; i++) {
+  for (u8 i = 0; i < FIELDS_SIZE; i++) {
     free(fields->fields[i].value);
   }
 }

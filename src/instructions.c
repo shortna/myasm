@@ -4,7 +4,6 @@
 #include "types.h"
 #include <elf.h>
 #include <string.h>
-#include <stdio.h>
 
 // Static opcodes
 #define SOP_LOGICAL_IMM (36)               // (0b00100100)
@@ -28,6 +27,9 @@
 #define BIT(p) (1ull << (p))
 #define GENMASK(x) ((1ull << (x)) - 1ull)
 
+// 2 to the power of 10
+#define OPTIONAL (1 << 10)
+
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wmissing-field-initializers"
 #elif defined(__GNUC__)
@@ -35,26 +37,60 @@
 #endif
 // IMPORTANT
 // instruction mnemonic MUST be in order of incresing opc field
-static const Instruction INSTRUCTIONS[] = {
-    {{"adr", "adrp"}, PCRELADDRESSING, {2, REGISTER, LABEL}},
-    {{"b."}, CONDITIONAL_BRANCH_IMM, {2, CONDITION, LABEL}},
-    {{"b", "bl"}, UNCONDITIONAL_BRANCH_IMM, {1, LABEL}},
-    {{"cbz", "cbnz"}, COMPARE_BRANCH, {2, REGISTER, LABEL}},
-    {{"tbz", "tbnz"}, TEST_BRANCH, {3, REGISTER, IMMEDIATE, LABEL}},
-    {{"ldr", "ldrsw"}, LDR_LITERAL, {2, REGISTER, LABEL}},
 
-    {{"br", "blr", "ret"}, UNCONDITIONAL_BRANCH_REG, {1, REGISTER | OPTIONAL}},
-    {{"movn", "movz", "movk"}, MOVEWIDE, {3, REGISTER, IMMEDIATE, SHIFT | OPTIONAL}},
-    {{"add", "sub"}, ADDSUB_IMM, {4, REGISTER | SP, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
-    {{"adds", "subs"}, ADDSUB_IMM, {4, REGISTER, REGISTER | SP, IMMEDIATE, SHIFT | OPTIONAL}},
-    {{"and", "orr", "eor", "ands"}, LOGICAL_IMM, {3, REGISTER | SP, REGISTER, IMMEDIATE}},
-    {{"and", "bic", "orr", "orn", "eor", "eon", "ands", "bics"}, LOGICAL_SH_REG, {4, REGISTER, REGISTER, REGISTER, SHIFT | OPTIONAL}},
-    {{"svc", "hvc", "smc", "brk", "hlt", "tcancel"}, EXCEPTION, {1, IMMEDIATE}},
-    {{"dcps1", "dcps2", "dcps3"}, EXCEPTION, {1, IMMEDIATE | OPTIONAL}},
-    {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_REG, {4, REGISTER, REGISTER | SP, REGISTER, EXTEND | SHIFT | OPTIONAL}},
-    {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_IMM, {3, REGISTER, REGISTER | SP, IMMEDIATE | OPTIONAL}},
-    {{"ccmn", "ccmp"}, CONDITIONAL_COMPARE_REG, {4, REGISTER, REGISTER, IMMEDIATE, CONDITION}},
-    {{"ccmn", "ccmp"}, CONDITIONAL_COMPARE_IMM, {4, REGISTER, IMMEDIATE, IMMEDIATE, CONDITION}},
+typedef struct Signature {
+  u8 n_args;
+  TokenType args[FIELDS_SIZE - 1];
+} Signature;
+
+typedef enum InstructionType {
+  NONE,
+  LOGICAL_IMM,
+  LOGICAL_SH_REG,
+  MOVEWIDE,
+  ADDSUB_IMM,
+  PCRELADDRESSING,
+  EXCEPTION,
+  CONDITIONAL_BRANCH_IMM,
+  UNCONDITIONAL_BRANCH_IMM,
+  UNCONDITIONAL_BRANCH_REG,
+  COMPARE_BRANCH,
+  TEST_BRANCH,
+  LDR_LITERAL,
+  LDR_STR_REG,
+  LDR_STR_IMM,
+  CONDITIONAL_COMPARE_REG,
+  CONDITIONAL_COMPARE_IMM,
+} InstructionType;
+
+typedef struct Instruction {
+  char const *const mnemonic[10];
+  const InstructionType type;
+  const Signature s;
+} Instruction;
+
+static const Instruction INSTRUCTIONS[] = {
+    {{"adr", "adrp"}, PCRELADDRESSING, {2, {T_REGISTER, T_LABEL}}},
+    {{"b."}, CONDITIONAL_BRANCH_IMM, {2, {T_CONDITION, T_LABEL}}},
+    {{"b", "bl"}, UNCONDITIONAL_BRANCH_IMM, {1, {T_LABEL}}},
+    {{"cbz", "cbnz"}, COMPARE_BRANCH, {2, {T_REGISTER, T_LABEL}}},
+    {{"tbz", "tbnz"}, TEST_BRANCH, {3, {T_REGISTER, T_IMMEDIATE, T_LABEL}}},
+    {{"ldr", "ldrsw"}, LDR_LITERAL, {2, {T_REGISTER, T_LABEL}}},
+
+    {{"br", "blr", "ret"}, UNCONDITIONAL_BRANCH_REG, {1, {T_REGISTER | OPTIONAL}}},
+    {{"movn", "movz", "movk"}, MOVEWIDE, {3, {T_REGISTER, T_IMMEDIATE, T_SHIFT | OPTIONAL}}},
+    // needs sp check
+//    {{"add", "sub"}, ADDSUB_IMM, {4, {T_REGISTER | SP, T_REGISTER | SP, T_IMMEDIATE, T_SHIFT | OPTIONAL}}},
+//    {{"adds", "subs"}, ADDSUB_IMM, {4, {T_REGISTER, T_REGISTER | SP, T_IMMEDIATE, T_SHIFT | OPTIONAL}}},
+//    {{"and", "orr", "eor", "ands"}, LOGICAL_IMM, {3, {T_REGISTER | SP, T_REGISTER, T_IMMEDIATE}}},
+//    {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_REG, {4, {T_REGISTER, T_REGISTER | SP, T_REGISTER, T_EXTEND | T_SHIFT | OPTIONAL}}},
+//    {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_IMM, {3, {T_REGISTER, T_REGISTER | SP, T_IMMEDIATE | OPTIONAL}}},
+
+    {{"and", "bic", "orr", "orn", "eor", "eon", "ands", "bics"}, LOGICAL_SH_REG, {4, {T_REGISTER, T_REGISTER, T_REGISTER, T_SHIFT | OPTIONAL}}},
+    {{"svc", "hvc", "smc", "brk", "hlt", "tcancel"}, EXCEPTION, {1, {T_IMMEDIATE}}},
+    {{"dcps1", "dcps2", "dcps3"}, EXCEPTION, {1, {T_IMMEDIATE | OPTIONAL}}},
+    {{"ccmn", "ccmp"}, CONDITIONAL_COMPARE_REG, {4, {T_REGISTER, T_REGISTER, T_IMMEDIATE, T_CONDITION}}},
+    {{"ccmn", "ccmp"}, CONDITIONAL_COMPARE_IMM, {4, {T_REGISTER, T_IMMEDIATE, T_IMMEDIATE, T_CONDITION}}},
 };
 
 u8 searchMnemonic(const char *mnemonic) {
@@ -1003,11 +1039,9 @@ ArmInstruction assembleException(const Fields *instruction) {
 
 u8 compareSignatures(const Signature *s1, const Signature *s2) {
   u8 i = 0;
-  Argument *s1_args = ((Argument *)s1) + 1;
-  Argument *s2_args = ((Argument *)s2) + 1;
   while (i < s1->n_args) {
     // if args differs from what expected and optional not set
-    if ((s1_args[i] & s2_args[i]) == 0 && !(s1_args[i] & OPTIONAL)) {
+    if (s1->args[i] != s2->args[i] && !(s1->args[i] & OPTIONAL)) {
       return 0;
     }
     i++;
@@ -1031,64 +1065,17 @@ InstructionType getInstructionType(const char *mnemonic, Signature *s) {
   return NONE;
 }
 
-Signature decodeTokens(const Fields *instruction) {
+Signature getSignature(const Fields *instruction) {
   Signature s = {0};
-  Argument *args = ((Argument *)&s);
-  u8 i = 1, n = 1;
-
-  while (i < instruction->n_fields) {
-    switch (instruction->fields[i].type) {
-    case T_REGISTER: {
-      Register r;
-      parseRegister(instruction->fields[i].value, &r);
-      if (r.n == REGISTER_ZR_SP) {
-        if (strcmp(instruction->fields[i].value + 1, "zr") != 0) {
-          args[n] = SP;
-          break;
-        }
-      }
-      args[n] = REGISTER;
-      break;
-    }
-    case T_LABEL:
-      args[n] = LABEL;
-      break;
-    case T_IMMEDIATE:
-      args[n] = IMMEDIATE;
-      break;
-    case T_SHIFT:
-      if (i + 1 < instruction->n_fields &&
-          instruction->fields[i + 1].type == T_IMMEDIATE) {
-        args[n] = SHIFT;
-        break;
-      }
-      errorFields("Shift without parameter", instruction);
-      break;
-    case T_EXTEND:
-      args[n] = EXTEND;
-      break;
-    case T_CONDITION:
-      args[n] = CONDITION;
-      break;
-    case T_RSBRACE:
-    case T_LSBRACE:
-    case T_BANG:
-    case T_EQUAL:
-      n--;
-      break;
-    default:
-      NULL;
-    }
-    i++;
-    n++;
+  for (u8 i = 1; i < instruction->n_fields; i++) {
+    s.args[i - 1] = instruction->fields[i].type;
   }
-
-  s.n_args = n;
+  s.n_args = instruction->n_fields - 1;
   return s;
 }
 
 ArmInstruction assemble(const Fields *instruction) {
-  Signature s = decodeTokens(instruction);
+  Signature s = getSignature(instruction);
   InstructionType it = getInstructionType(instruction->fields->value, &s);
 
   ArmInstruction i = 0;

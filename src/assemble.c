@@ -22,7 +22,7 @@ u8 collectLineOfTokens(Fields *f) {
     return ok;
   }
 
-  while (ok && f->n_fields != FIELDS_MAX - 1 &&
+  while (ok && f->n_fields != FIELDS_SIZE - 1 &&
          f->fields[f->n_fields].type != T_EOL) {
     f->n_fields++;
     ok = getToken(CONTEXT.cur_src, f->fields + f->n_fields);
