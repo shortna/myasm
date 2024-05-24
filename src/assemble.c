@@ -31,7 +31,7 @@ u8 collectLineOfTokens(Fields *f) {
   return ok;
 }
 
-void makeLabels(void) {
+u8 makeLabels(void) {
   Token t = initToken(TOKEN_SIZE);
 
   u8 section_ind = 0;
@@ -78,6 +78,10 @@ void makeLabels(void) {
   CONTEXT.pc = 0;
   LINE = 0;
   free(t.value);
+  if (ERRORS) {
+    return 0;
+  } 
+  return 1;
 }
 
 u8 makeAssemble(void) {
@@ -128,6 +132,7 @@ u8 make(const char *sources, const char *out_name) {
     out_name = alloca(8);
     strcpy((char *)out_name, "a.out");
   }
+  u8 res = 1;
 
   CONTEXT.out = tmpfile();
   if (!CONTEXT.out) {
@@ -144,18 +149,19 @@ u8 make(const char *sources, const char *out_name) {
     return 0;
   }
 
-  initSymbolTable();
   initShdrTable();
-  makeLabels();
+  initSymbolTable();
+  initRelocationTable();
+
+  if (!makeLabels()) {
+    res = 0;
+    goto done;
+  }
 
   fseek(CONTEXT.cur_src, 0, SEEK_SET);
-  initRelocationTable();
   makeAssemble();
 
-  if (!writeElf(CONTEXT.out)) {
-    error("Unable to write elf objects");
-  }
-  fclose(CONTEXT.cur_src);
+  writeElf(CONTEXT.out);
 
   if (!ERRORS) {
     FILE *out = fopen(out_name, "w");
@@ -163,20 +169,24 @@ u8 make(const char *sources, const char *out_name) {
       fclose(CONTEXT.out);
       fprintf(stderr, "Failed to open %s file. Error: %s\n", out_name,
               strerror(errno));
-      return 0;
-    }
-    fseek(CONTEXT.out, 0, SEEK_SET);
-    fseek(out, 0, SEEK_SET);
-    int ch;
-    while ((ch = fgetc(CONTEXT.out)) != EOF) {
-      fputc(ch, out);
+      res = 0;
+      goto done;
+    } else {
+      fseek(CONTEXT.out, 0, SEEK_SET);
+      fseek(out, 0, SEEK_SET);
+      int ch;
+      while ((ch = fgetc(CONTEXT.out)) != EOF) {
+        fputc(ch, out);
+      }
     }
     fclose(out);
   }
-  fclose(CONTEXT.out);
 
+done:
+  fclose(CONTEXT.cur_src);
+  fclose(CONTEXT.out);
   freeSymoblTable();
   freeShdrTable();
   freeRelocationTable();
-  return 1;
+  return res;
 }

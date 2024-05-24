@@ -33,7 +33,7 @@ typedef enum {
 
 typedef struct Token {
   TokenType type;
-  size_t capacity;
+  u8 capacity;
   char *value;
 } Token;
 

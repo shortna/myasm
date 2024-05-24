@@ -452,7 +452,10 @@ u8 writeTables(FILE *out) {
 
 u8 writeElf(FILE *out) {
   if (SECTIONS.count == 1) {
-    return 0;
+    addToShdr(".text", SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, 0, 0, 0, 0);
+    for (u64 i = 1; i < SYMBOLS.count; i++) {
+      SYMBOLS.items[i].st_shndx = 1;
+    }
   }
   backpatch();
   writeTables(out);

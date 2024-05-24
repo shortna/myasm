@@ -1,6 +1,7 @@
 .global _start
 .section .text,"ax"
 
+  lllllllllllllllllllllllllllllllllllllllllllllllllllllllll
 _start:
   adr x8, var   // load address of var to x8
   ldrb w0, [x8] // get byte from x8

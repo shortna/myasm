@@ -71,7 +71,8 @@ u8 getToken(FILE *f, Token *t) {
     return 0;
   }
 
-  size_t i = 0;
+  bool too_long = false;
+  u8 i = 0;
   int ch;
   while ((ch = tolower(getc(SRC))) != EOF) {
     switch (ch) {
@@ -121,13 +122,14 @@ u8 getToken(FILE *f, Token *t) {
       t->value[i++] = ch;
       goto done;
     case '.':
-      if (i != 0) {
+      if (i != 0 && i < t->capacity - 1) {
         t->value[i++] = ch;
         goto done;
       }
       __attribute__((fallthrough));
     default:
       if (i == t->capacity - 1) {
+        too_long = true;
         goto done;
       }
       t->value[i++] = ch;
@@ -141,6 +143,10 @@ u8 getToken(FILE *f, Token *t) {
 
 done:
   t->value[i] = '\0';
+  if (too_long) {
+    errorToken("Token is too long", t);
+    return 0;
+  }
   t->type = getTokenType(t);
   return 1;
 }
