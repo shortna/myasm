@@ -99,7 +99,7 @@ ArmInstruction assembleConditionalCompareImm(const Fields *instruction) {
     errorFields("Argument 2 must have type uint8", instruction);
   }
 
-  if (imm >= GENMASK(5)) {
+  if (imm > GENMASK(5)) {
     errorFields("Argument 2 must be in the range 0 to 31", instruction);
   }
 
@@ -108,7 +108,7 @@ ArmInstruction assembleConditionalCompareImm(const Fields *instruction) {
     errorFields("Argument 3 must have type uint8", instruction);
   }
 
-  if (imm_nzcv >= 16) {
+  if (imm_nzcv > 15) {
     errorFields("Argument 3 must be in the range 0 to 15", instruction);
   }
 
@@ -133,8 +133,8 @@ ArmInstruction assembleConditionalCompareReg(const Fields *instruction) {
   ArmInstruction assembled = 0;
   
   Register Rn, Rm;
-  parseRegister(instruction->fields[1].value, &Rm);
-  parseRegister(instruction->fields[2].value, &Rn);
+  parseRegister(instruction->fields[1].value, &Rn);
+  parseRegister(instruction->fields[2].value, &Rm);
 
   bool sf;
   if (Rm.extended && Rn.extended) {
@@ -150,12 +150,14 @@ ArmInstruction assembleConditionalCompareReg(const Fields *instruction) {
     errorFields("Argument 3 must have type uint8", instruction);
   }
 
-  if (imm_nzcv >= 16) {
+  if (imm_nzcv > 15) {
     errorFields("Argument 3 must be in the range 0 to 15", instruction);
   }
 
   ConditionType cd;
-  parseCondition(instruction->fields[4].value, &cd);
+  if (!parseCondition(instruction->fields[4].value, &cd)) {
+    errorFields("Unknown condition", instruction);
+  }
 
   u8 op = instructionIndex(CONDITIONAL_COMPARE_REG, instruction->fields->value);
   u8 S = 1;
@@ -166,8 +168,7 @@ ArmInstruction assembleConditionalCompareReg(const Fields *instruction) {
   }
   assembled = ((u32)sf << 31) | ((u32)op << 30) | ((u32)S << 29) | 
               ((u32)SOP_CONDITIONAL_COMPARE_REG << 21) | ((u32)Rm.n << 16) |
-              ((u32)cd << 12) | ((u32)0 << 10) | ((u32)Rn.n << 5) | (0 << 4) |
-              imm_nzcv;
+              ((u32)cd << 12) | ((u32)Rn.n << 5) | imm_nzcv;
   return assembled;
 }
 
