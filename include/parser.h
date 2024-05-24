@@ -2,25 +2,23 @@
 #define MYASM_PARSER
 
 #include "myasm.h"
-#define REGISTER_ZR_SP (31)
 
-// forward declaration
-struct Token;
+typedef enum RegisterType {
+  R0,   R1,   R2,   R3,   R4,   R5,   R6,
+  R7,   R8,   R9,   R10,  R11,  R12,  R13, 
+  R14,  R15,  R16,  R17,  R18,  R19,  R20, 
+  R21,  R22,  R23,  R24,  R25,  R26,  R27,  
+  R28,  R29,  RLR,  RZR,  RSP,
+} RegisterType;
 
 typedef struct {
   bool extended;
-  i8 n;
+  RegisterType reg;
 } Register;
 
 typedef enum {
-  UXTB,
-  UXTH,
-  UXTW,
-  UXTX,
-  SXTB,
-  SXTH,
-  SXTW,
-  SXTX,
+  UXTB,  UXTH,  UXTW,  UXTX,
+  SXTB,  SXTH,  SXTW,  SXTX,
 } ExtendType;
 
 struct ExtendMap {
@@ -40,10 +38,7 @@ static const struct ExtendMap EXTENDS[] = {
 };
 
 typedef enum {
-  SH_LSL, 
-  SH_LSR, 
-  SH_ASR, 
-  SH_ROR,
+  SH_LSL, SH_LSR, SH_ASR, SH_ROR,
 } ShiftType;
 
 struct ShiftMap {
@@ -59,22 +54,10 @@ static const struct ShiftMap SHIFTS[] = {
 };
 
 typedef enum {
-  EQ = 0,
-  NE = 1,
-  CS = 2,
-  CC = 3,
-  MI = 4,
-  PL = 5,
-  VS = 6,
-  VC = 7,
-  HI = 8,
-  LS = 9, 
-  GE = 10,
-  LT = 11,
-  GT = 12,
-  LE = 13,
-  AL = 14,
-  NV = 15,
+  EQ = 0,    NE = 1,    CS = 2,    CC = 3,
+  MI = 4,    PL = 5,    VS = 6,    VC = 7,
+  HI = 8,    LS = 9,    GE = 10,   LT = 11,
+  GT = 12,   LE = 13,   AL = 14,   NV = 15,
 } ConditionType;
 
 struct ConditionMap {

@@ -29,6 +29,7 @@
 
 // 2 to the power of 10
 #define OPTIONAL (1 << 10)
+#define REG_SP (31)
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wmissing-field-initializers"
@@ -126,7 +127,13 @@ ArmInstruction assembleConditionalCompareImm(const Fields *instruction) {
   ArmInstruction assembled = 0;
   
   Register Rn;
-  parseRegister(instruction->fields[1].value, &Rn);
+  if (!parseRegister(instruction->fields[1].value, &Rn)) {
+    errorFields("Argument 1 must be register between R0 - R29 or RZR/LR", instruction);
+  }
+
+  if (Rn.reg == RSP) {
+    errorFields("Argument 1 must be register between R0 - R29 or RZR/LR", instruction);
+  }
 
   bool sf = Rn.extended;
 
@@ -149,7 +156,9 @@ ArmInstruction assembleConditionalCompareImm(const Fields *instruction) {
   }
 
   ConditionType cd;
-  parseCondition(instruction->fields[4].value, &cd);
+  if (!parseCondition(instruction->fields[4].value, &cd)) {
+    errorFields("Unknown condition", instruction);
+  }
 
   u8 op = instructionIndex(CONDITIONAL_COMPARE_REG, instruction->fields->value);
   u8 S = 1;
@@ -160,7 +169,7 @@ ArmInstruction assembleConditionalCompareImm(const Fields *instruction) {
   }
   assembled = ((u32)sf << 31) | ((u32)op << 30) | ((u32)S << 29) |
               ((u32)SOP_CONDITIONAL_COMPARE_IMM << 21) | ((u32)imm << 16) |
-              ((u32)cd << 12) | ((u32)2 << 10) | ((u32)Rn.n << 5) | (0 << 4) |
+              ((u32)cd << 12) | ((u32)2 << 10) | ((u32)Rn.reg << 5) |
               imm_nzcv;
   return assembled;
 }
@@ -169,8 +178,14 @@ ArmInstruction assembleConditionalCompareReg(const Fields *instruction) {
   ArmInstruction assembled = 0;
   
   Register Rn, Rm;
-  parseRegister(instruction->fields[1].value, &Rn);
-  parseRegister(instruction->fields[2].value, &Rm);
+  if (!parseRegister(instruction->fields[1].value, &Rn) ||
+      !parseRegister(instruction->fields[2].value, &Rm)) {
+    errorFields("Arguments 1 and 2 must be register between R0 - R29 or RZR/LR", instruction);
+  }
+
+  if (Rn.reg == RSP || Rm.reg == RSP) {
+    errorFields("Arguments 1 and 2 must be register between R0 - R29 or RZR/LR", instruction);
+  }
 
   bool sf;
   if (Rm.extended && Rn.extended) {
@@ -203,8 +218,8 @@ ArmInstruction assembleConditionalCompareReg(const Fields *instruction) {
     return 0;
   }
   assembled = ((u32)sf << 31) | ((u32)op << 30) | ((u32)S << 29) | 
-              ((u32)SOP_CONDITIONAL_COMPARE_REG << 21) | ((u32)Rm.n << 16) |
-              ((u32)cd << 12) | ((u32)Rn.n << 5) | imm_nzcv;
+              ((u32)SOP_CONDITIONAL_COMPARE_REG << 21) | ((u32)Rm.reg << 16) |
+              ((u32)cd << 12) | ((u32)Rn.reg << 5) | imm_nzcv;
   return assembled;
 }
 
@@ -213,8 +228,21 @@ ArmInstruction assembleLdrStrImm(const Fields *instruction) {
   ArmInstruction assembled = 0;
 
   Register Rt, Rn;
-  parseRegister(instruction->fields[1].value, &Rt);
-  parseRegister(instruction->fields[3].value, &Rn);
+  if (!parseRegister(instruction->fields[1].value, &Rt)) {
+    errorFields("Argument 1 must be register between R0 - R29 or RZR/LR", instruction);
+  }
+
+  if (Rt.reg == RSP) {
+    errorFields("Argument 1 must be register between R0 - R29 or RZR/LR", instruction);
+  }
+
+  if (!parseRegister(instruction->fields[3].value, &Rn)) {
+    errorFields("Argument 1 must be any extended register", instruction);
+  }
+
+  if (Rn.reg == RSP) {
+    Rn.reg = REG_SP; // reg sp and xzr in enum is 
+  }
 
   if (!Rn.extended) {
     errorFields("Argument 2 must have size of 64bits", instruction);
@@ -288,7 +316,9 @@ ArmInstruction assembleLdrStrImm(const Fields *instruction) {
   // pre index
   // post index
   else {
-    parseImmediateI64(instruction->fields[imm_ind].value, &imm);
+    if (!parseImmediateI64(instruction->fields[imm_ind].value, &imm)) {
+      errorFields("Failed to parse index", instruction);
+    }
     if (imm < -256 || imm > 255) {
       errorFields("Immediate must be in range -256 to 255", instruction);
     }
@@ -323,7 +353,7 @@ ArmInstruction assembleLdrStrImm(const Fields *instruction) {
     return 0;
   }
   assembled = ((u32)size << 30) | ((u32)op << 24) | ((u32)opc << 22) |
-              ((u32)imm << 10) | ((u32)Rn.n << 5) | Rt.n;
+              ((u32)imm << 10) | ((u32)Rn.reg << 5) | Rt.reg;
   return assembled;
 }
 

@@ -41,29 +41,35 @@ u8 parseRegister(const char *reg, Register *r) {
     return 0;
   }
 
-  u8 n = 0;
+  RegisterType n = -1;
   if (strcmp(reg + 1, "zr") == 0) {
-    n = REGISTER_ZR_SP;
+    n = RZR;
+  }
+
+  if (strcmp(reg, "lr") == 0) {
+    n = RLR;
   }
 
   if (strcmp(reg, "wsp") == 0 || strcmp(reg, "sp") == 0) {
-    n = REGISTER_ZR_SP;
+    n = RSP;
   }
 
   u64 res;
-  if (n == 0) {
+  if (n == (RegisterType)-1) {
     if (!parseDigit(reg + 1, &res)) {
       return 0;
     }
 
     if (res <= 29) {
       n = res;
-    }
+    } else {
+      return 0;
+    } 
   }
 
   if (r) {
     r->extended = *reg == 'x' || *reg == 's';
-    r->n = n;
+    r->reg = n;
   }
   return 1;
 }
