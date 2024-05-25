@@ -24,24 +24,14 @@
 #define SOP_CONDITIONAL_COMPARE_REG (210)  // (0b11010010)
 #define SOP_CONDITIONAL_COMPARE_IMM (210)  // (0b11010010)
 
-#define BIT(p) (1ull << (p))
 #define GENMASK(x) ((1ull << (x)) - 1ull)
 
-// 2 to the power of 10
-#define OPTIONAL (1 << 10)
+#define OPTIONAL BIT(31)
+// RSP and RZR in enum are different but in practice both encoded as 31
 #define REG_SP (31)
 
-#ifdef __clang__
-#pragma clang diagnostic ignored "-Wmissing-field-initializers"
-#elif defined(__GNUC__)
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-#endif
-// IMPORTANT
-// instruction mnemonic MUST be in order of incresing opc field
-
 typedef struct Signature {
-  u8 n_args;
-  TokenType args[FIELDS_SIZE - 1];
+  TokenType args[FIELDS_SIZE - 1]; // -1 since first args is mnemonic
 } Signature;
 
 typedef enum InstructionType {
@@ -70,28 +60,30 @@ typedef struct Instruction {
   const Signature s;
 } Instruction;
 
+// IMPORTANT
+// instruction mnemonic MUST be in order of incresing opc field
 static const Instruction INSTRUCTIONS[] = {
-    {{"adr", "adrp"}, PCRELADDRESSING, {2, {T_REGISTER, T_LABEL}}},
-    {{"b."}, CONDITIONAL_BRANCH_IMM, {2, {T_CONDITION, T_LABEL}}},
-    {{"b", "bl"}, UNCONDITIONAL_BRANCH_IMM, {1, {T_LABEL}}},
-    {{"cbz", "cbnz"}, COMPARE_BRANCH, {2, {T_REGISTER, T_LABEL}}},
-    {{"tbz", "tbnz"}, TEST_BRANCH, {3, {T_REGISTER, T_IMMEDIATE, T_LABEL}}},
-    {{"ldr", "ldrsw"}, LDR_LITERAL, {2, {T_REGISTER, T_LABEL}}},
+    {{"adr", "adrp"}, PCRELADDRESSING, {T_REGISTER, T_LABEL, T_EOL}},
+    {{"b."}, CONDITIONAL_BRANCH_IMM, {T_CONDITION, T_LABEL, T_EOL}},
+    {{"b", "bl"}, UNCONDITIONAL_BRANCH_IMM, {T_LABEL, T_EOL}},
+    {{"cbz", "cbnz"}, COMPARE_BRANCH, {T_REGISTER, T_LABEL, T_EOL}},
+    {{"tbz", "tbnz"}, TEST_BRANCH, {T_REGISTER, T_IMMEDIATE, T_LABEL, T_EOL}},
+    {{"ldr", "ldrsw"}, LDR_LITERAL, {T_REGISTER, T_LABEL, T_EOL}},
 
-    {{"br", "blr", "ret"}, UNCONDITIONAL_BRANCH_REG, {1, {T_REGISTER | OPTIONAL}}},
-    {{"movn", "movz", "movk"}, MOVEWIDE, {3, {T_REGISTER, T_IMMEDIATE, T_SHIFT | OPTIONAL}}},
-    // needs sp check
-//    {{"add", "sub"}, ADDSUB_IMM, {4, {T_REGISTER | SP, T_REGISTER | SP, T_IMMEDIATE, T_SHIFT | OPTIONAL}}},
-//    {{"adds", "subs"}, ADDSUB_IMM, {4, {T_REGISTER, T_REGISTER | SP, T_IMMEDIATE, T_SHIFT | OPTIONAL}}},
-//    {{"and", "orr", "eor", "ands"}, LOGICAL_IMM, {3, {T_REGISTER | SP, T_REGISTER, T_IMMEDIATE}}},
-//    {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_REG, {4, {T_REGISTER, T_REGISTER | SP, T_REGISTER, T_EXTEND | T_SHIFT | OPTIONAL}}},
-//    {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_IMM, {3, {T_REGISTER, T_REGISTER | SP, T_IMMEDIATE | OPTIONAL}}},
+    {{"br", "blr", "ret"}, UNCONDITIONAL_BRANCH_REG, {T_REGISTER | OPTIONAL, T_EOL}},
+    {{"movn", "movz", "movk"}, MOVEWIDE, {T_REGISTER, T_IMMEDIATE, T_SHIFT | OPTIONAL, T_EOL}},
+    {{"add", "sub", "adds", "subs"}, ADDSUB_IMM, {T_REGISTER, T_REGISTER, T_IMMEDIATE, T_SHIFT | OPTIONAL, T_EOL}},
+    {{"and", "bic", "orr", "orn", "eor", "eon", "ands", "bics"}, LOGICAL_SH_REG, {T_REGISTER, T_REGISTER, T_REGISTER, T_SHIFT | OPTIONAL, T_EOL}},
+    {{"svc", "hvc", "smc", "brk", "hlt", "tcancel", "dcps1", "dcps2", "dcps3"}, EXCEPTION, {T_IMMEDIATE, T_EOL}},
+    {{"and", "orr", "eor", "ands"}, LOGICAL_IMM, {T_REGISTER, T_REGISTER, T_IMMEDIATE, T_EOL}},
 
-    {{"and", "bic", "orr", "orn", "eor", "eon", "ands", "bics"}, LOGICAL_SH_REG, {4, {T_REGISTER, T_REGISTER, T_REGISTER, T_SHIFT | OPTIONAL}}},
-    {{"svc", "hvc", "smc", "brk", "hlt", "tcancel"}, EXCEPTION, {1, {T_IMMEDIATE}}},
-    {{"dcps1", "dcps2", "dcps3"}, EXCEPTION, {1, {T_IMMEDIATE | OPTIONAL}}},
-    {{"ccmn", "ccmp"}, CONDITIONAL_COMPARE_REG, {4, {T_REGISTER, T_REGISTER, T_IMMEDIATE, T_CONDITION}}},
-    {{"ccmn", "ccmp"}, CONDITIONAL_COMPARE_IMM, {4, {T_REGISTER, T_IMMEDIATE, T_IMMEDIATE, T_CONDITION}}},
+    {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_REG, {T_REGISTER, T_REGISTER, T_REGISTER, T_EXTEND | T_SHIFT | OPTIONAL, T_EOL}},
+//                                                                                           {T_REGISTER, T_REGISTER | SP, T_REGISTER, T_EXTEND | T_SHIFT | OPTIONAL, T_EOL}
+    {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_IMM, {T_REGISTER, T_REGISTER, T_IMMEDIATE | OPTIONAL, T_EOL}},
+//                                                                                           {T_REGISTER, T_REGISTER | SP, T_IMMEDIATE | OPTIONAL, T_EOL}
+
+    {{"ccmn", "ccmp"}, CONDITIONAL_COMPARE_REG, {T_REGISTER, T_REGISTER, T_IMMEDIATE, T_CONDITION, T_EOL}},
+    {{"ccmn", "ccmp"}, CONDITIONAL_COMPARE_IMM, {T_REGISTER, T_IMMEDIATE, T_IMMEDIATE, T_CONDITION, T_EOL}},
 };
 
 u8 searchMnemonic(const char *mnemonic) {
@@ -123,106 +115,118 @@ u8 instructionIndex(InstructionType type, const char *mnemonic) {
   return 0;
 }
 
-ArmInstruction assembleConditionalCompareImm(const Fields *instruction) {
-  ArmInstruction assembled = 0;
-  
-  Register Rn;
-  if (!parseRegister(instruction->fields[1].value, &Rn)) {
-    errorFields("Argument 1 must be register between R0 - R29 or RZR/LR", instruction);
+u8 compareSignatures(const Signature *s1, const Signature *s2) {
+  u8 i = 0;
+  while (s1->args[i] != T_EOL) {
+    // if args differs from what expected and optional not set
+    if (s1->args[i] != s2->args[i] && !(s1->args[i] & OPTIONAL)) {
+      return 0;
+    }
+    i++;
   }
 
-  if (Rn.reg == RSP) {
-    errorFields("Argument 1 must be register between R0 - R29 or RZR/LR", instruction);
-  }
-
-  bool sf = Rn.extended;
-
-  u8 imm;
-  if (!parseImmediateU8(instruction->fields[2].value, &imm)) {
-    errorFields("Argument 2 must have type uint8", instruction);
-  }
-
-  if (imm > GENMASK(5)) {
-    errorFields("Argument 2 must be in the range 0 to 31", instruction);
-  }
-
-  u8 imm_nzcv;
-  if (!parseImmediateU8(instruction->fields[3].value, &imm_nzcv)) {
-    errorFields("Argument 3 must have type uint8", instruction);
-  }
-
-  if (imm_nzcv > 15) {
-    errorFields("Argument 3 must be in the range 0 to 15", instruction);
-  }
-
-  ConditionType cd;
-  if (!parseCondition(instruction->fields[4].value, &cd)) {
-    errorFields("Unknown condition", instruction);
-  }
-
-  u8 op = instructionIndex(CONDITIONAL_COMPARE_REG, instruction->fields->value);
-  u8 S = 1;
-
-  // return 0 so makeAssemble do not write to file
-  if (ERRORS) {
-    return 0;
-  }
-  assembled = ((u32)sf << 31) | ((u32)op << 30) | ((u32)S << 29) |
-              ((u32)SOP_CONDITIONAL_COMPARE_IMM << 21) | ((u32)imm << 16) |
-              ((u32)cd << 12) | ((u32)2 << 10) | ((u32)Rn.reg << 5) |
-              imm_nzcv;
-  return assembled;
+  return 1;
 }
 
-ArmInstruction assembleConditionalCompareReg(const Fields *instruction) {
-  ArmInstruction assembled = 0;
-  
-  Register Rn, Rm;
-  if (!parseRegister(instruction->fields[1].value, &Rn) ||
-      !parseRegister(instruction->fields[2].value, &Rm)) {
-    errorFields("Arguments 1 and 2 must be register between R0 - R29 or RZR/LR", instruction);
+InstructionType getInstructionType(const char *mnemonic, Signature *s) {
+  for (u64 i = 0; i < sizeof(INSTRUCTIONS) / sizeof(*INSTRUCTIONS); i++) {
+    if (compareSignatures(&INSTRUCTIONS[i].s, s)) {
+      u8 j = 0;
+      while (INSTRUCTIONS[i].mnemonic[j]) {
+        if (strcmp(INSTRUCTIONS[i].mnemonic[j], mnemonic) == 0) {
+          return INSTRUCTIONS[i].type;
+        }
+        j++;
+      }
+    }
   }
+  return NONE;
+}
 
-  if (Rn.reg == RSP || Rm.reg == RSP) {
-    errorFields("Arguments 1 and 2 must be register between R0 - R29 or RZR/LR", instruction);
+Signature getSignature(const Fields *instruction) {
+  Signature s = {0};
+  u8 i = 1;
+  while (instruction->fields[i].type != T_EOL) { 
+    s.args[i - 1] = instruction->fields[i].type;
+    i++;
   }
+  return s;
+}
 
-  bool sf;
-  if (Rm.extended && Rn.extended) {
-    sf = 1;
-  } else if (!Rm.extended && !Rn.extended) {
-    sf = 0;
+// SHAMELESSLY STOLEN FROM LLVM
+
+// Is this number's binary representation all 1s?
+u8 isMask(u64 imm) { return ((imm + 1) & imm) == 0; }
+
+// Is this number's binary representation one or more 1s followed by
+// one or more 0s?
+u8 isShiftedMask(u64 imm) { return isMask((imm - 1) | imm); }
+
+#define countTrailingZeros(x) __builtin_ctzll(x)
+#define countTrailingOnes(x) __builtin_ctzll(~x)
+#define countLeadingOnes(x) __builtin_clzll(~x)
+
+bool encodeBitmaskImmediate(u64 imm, u64 *encoding, bool extended) {
+  if (imm == 0ULL || imm == ~0ULL)
+    return false;
+
+  // First, determine the element size.
+  u32 size = extended ? 64u : 32u;
+
+  do {
+    size >>= 1;
+    u64 mask = (1ULL << size) - 1;
+
+    if ((imm & mask) != ((imm >> size) & mask)) {
+      size <<= 1;
+      break;
+    }
+  } while (size > 2);
+
+  // Second, determine the rotation to make the element be: 0^m 1^n.
+  u32 cto, ctz;
+  u64 mask = ((u64)-1LL) >> (64 - size);
+  imm &= mask;
+
+  if (isShiftedMask(imm)) {
+    ctz = countTrailingZeros(imm);
+    cto = countTrailingOnes(imm >> ctz);
   } else {
-    errorFields("Registers must have same size", instruction);
+    imm |= ~mask;
+    if (!isShiftedMask(~imm))
+      return false;
+
+    u8 clo = countLeadingOnes(imm);
+    ctz = 64 - clo;
+    cto = clo + countTrailingOnes(imm) - (64 - size);
   }
 
-  u8 imm_nzcv;
-  if (!parseImmediateU8(instruction->fields[3].value, &imm_nzcv)) {
-    errorFields("Argument 3 must have type uint8", instruction);
-  }
+  // Encode in Immr the number of RORs it would take to get *from* 0^m 1^n
+  // to our target value, where I is the number of RORs to go the opposite
+  // direction.
+  u32 immr = (size - ctz) & (size - 1);
 
-  if (imm_nzcv > 15) {
-    errorFields("Argument 3 must be in the range 0 to 15", instruction);
-  }
+  // If size has a 1 in the n'th bit, create a value that has zeroes in
+  // bits [0, n] and ones above that.
+  u64 nimms = ~(size - 1) << 1;
 
-  ConditionType cd;
-  if (!parseCondition(instruction->fields[4].value, &cd)) {
-    errorFields("Unknown condition", instruction);
-  }
+  // Or the CTO value into the low bits, which must be below the Nth bit
+  // bit mentioned above.
+  nimms |= (cto - 1);
 
-  u8 op = instructionIndex(CONDITIONAL_COMPARE_REG, instruction->fields->value);
-  u8 S = 1;
+  // Extract the seventh bit and toggle it to create the N field.
+  u8 N = ((nimms >> 6) & 1) ^ 1;
 
-  // return 0 so makeAssemble do not write to file
-  if (ERRORS) {
-    return 0;
-  }
-  assembled = ((u32)sf << 31) | ((u32)op << 30) | ((u32)S << 29) | 
-              ((u32)SOP_CONDITIONAL_COMPARE_REG << 21) | ((u32)Rm.reg << 16) |
-              ((u32)cd << 12) | ((u32)Rn.reg << 5) | imm_nzcv;
-  return assembled;
+  *encoding = (N << 12) | (immr << 6) | (nimms & 0x3f);
+  return true;
 }
 
+/*************************/
+/* INSTRUCINONS ENCODING */
+/*************************/
+
+// requires revision
+/*
 // WHAT THE FUCK
 ArmInstruction assembleLdrStrImm(const Fields *instruction) {
   ArmInstruction assembled = 0;
@@ -241,7 +245,7 @@ ArmInstruction assembleLdrStrImm(const Fields *instruction) {
   }
 
   if (Rn.reg == RSP) {
-    Rn.reg = REG_SP; // reg sp and xzr in enum is 
+    Rn.reg = REG_SP; 
   }
 
   if (!Rn.extended) {
@@ -348,7 +352,6 @@ ArmInstruction assembleLdrStrImm(const Fields *instruction) {
     opc = 2 | (1 ^ Rt.extended);
   }
 
-  // return 0 so makeAssemble do not write to file
   if (ERRORS) {
     return 0;
   }
@@ -469,7 +472,6 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {
     }
   }
 
-  // return 0 so makeAssemble do not write to file
   if (ERRORS) {
     return 0;
   }
@@ -478,15 +480,123 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {
               ((u32)S << 10) | ((u32)Rn.n << 5) | Rt.n;
   return assembled;
 }
+*/
 
+// DONE
+ArmInstruction assembleConditionalCompareImm(const Fields *instruction) {
+  ArmInstruction assembled = 0;
+  
+  Register Rn;
+  if (!parseRegister(instruction->fields[1].value, &Rn)) {
+    errorFields("Argument 1 must be register R0 - R29 or RZR/LR", instruction);
+  }
+
+  if (Rn.reg == RSP) {
+    errorFields("Argument 1 must be register R0 - R29 or RZR/LR", instruction);
+  }
+
+  bool sf = Rn.extended;
+
+  u8 imm;
+  if (!parseImmediateU8(instruction->fields[2].value, &imm)) {
+    errorFields("Argument 2 must have type uint8", instruction);
+  }
+
+  if (imm > GENMASK(5)) {
+    errorFields("Argument 2 must be in the range 0 to 31", instruction);
+  }
+
+  u8 imm_nzcv;
+  if (!parseImmediateU8(instruction->fields[3].value, &imm_nzcv)) {
+    errorFields("Argument 3 must have type uint8", instruction);
+  }
+
+  if (imm_nzcv > 15) {
+    errorFields("Argument 3 must be in the range 0 to 15", instruction);
+  }
+
+  ConditionType cd;
+  if (!parseCondition(instruction->fields[4].value, &cd)) {
+    errorFields("Unknown condition", instruction);
+  }
+
+  u8 op = instructionIndex(CONDITIONAL_COMPARE_REG, instruction->fields->value);
+  u8 S = 1;
+
+  if (ERRORS) {
+    return 0;
+  }
+  assembled = ((u32)sf << 31) | ((u32)op << 30) | ((u32)S << 29) |
+              ((u32)SOP_CONDITIONAL_COMPARE_IMM << 21) | ((u32)imm << 16) |
+              ((u32)cd << 12) | ((u32)2 << 10) | ((u32)Rn.reg << 5) |
+              imm_nzcv;
+  return assembled;
+}
+
+// DONE
+ArmInstruction assembleConditionalCompareReg(const Fields *instruction) {
+  ArmInstruction assembled = 0;
+  
+  Register Rn, Rm;
+  if (!parseRegister(instruction->fields[1].value, &Rn) ||
+      !parseRegister(instruction->fields[2].value, &Rm)) {
+    errorFields("Arguments 1 and 2 must be registers R0 - R29 or RZR/LR", instruction);
+  }
+
+  if (Rn.reg == RSP || Rm.reg == RSP) {
+    errorFields("Arguments 1 and 2 must be registers R0 - R29 or RZR/LR", instruction);
+  }
+
+  bool sf;
+  if (Rm.extended && Rn.extended) {
+    sf = 1;
+  } else if (!Rm.extended && !Rn.extended) {
+    sf = 0;
+  } else {
+    errorFields("Registers must have same size", instruction);
+  }
+
+  u8 imm_nzcv;
+  if (!parseImmediateU8(instruction->fields[3].value, &imm_nzcv)) {
+    errorFields("Argument 3 must have type uint8", instruction);
+  }
+
+  if (imm_nzcv > 15) {
+    errorFields("Argument 3 must be in the range 0 to 15", instruction);
+  }
+
+  ConditionType cd;
+  if (!parseCondition(instruction->fields[4].value, &cd)) {
+    errorFields("Unknown condition", instruction);
+  }
+
+  u8 op = instructionIndex(CONDITIONAL_COMPARE_REG, instruction->fields->value);
+  u8 S = 1;
+
+  if (ERRORS) {
+    return 0;
+  }
+  assembled = ((u32)sf << 31) | ((u32)op << 30) | ((u32)S << 29) | 
+              ((u32)SOP_CONDITIONAL_COMPARE_REG << 21) | ((u32)Rm.reg << 16) |
+              ((u32)cd << 12) | ((u32)Rn.reg << 5) | imm_nzcv;
+  return assembled;
+}
+
+// DONE
 ArmInstruction assembleLdrLiteral(const Fields *instruction) {
   ArmInstruction assembled = 0;
   Register Rt = {0};
-  parseRegister(instruction->fields[1].value, &Rt);
+  if (!parseRegister(instruction->fields[1].value, &Rt)) {
+    errorFields("Argument 1 must be register R0 - R29 or RZR/LR", instruction);
+  }
+
+  if (Rt.reg == RSP) {
+    errorFields("Argument 1 must be register R0 - R29 or RZR/LR", instruction);
+  }
 
   u8 opc = instructionIndex(LDR_LITERAL, instruction->fields->value) + 1;
   if (!Rt.extended && opc == 2) {
-    errorFields("Instruction supports only 64 bits registers", instruction);
+    errorFields("Instruction ldrsw supports only 64 bits registers", instruction);
   }
   if (!Rt.extended && opc == 1) {
     opc = 0;
@@ -511,18 +621,18 @@ ArmInstruction assembleLdrLiteral(const Fields *instruction) {
     addRelocation(instruction->fields[2].value, R_AARCH64_LD_PREL_LO19);
   }
 
-  // return 0 so makeAssemble do not write to file
   if (ERRORS) {
     return 0;
   }
   assembled =
-      ((u32)opc << 30) | ((u32)SOP_LDR_LITERAL << 24) | (offset << 5) | Rt.n;
+      ((u32)opc << 30) | ((u32)SOP_LDR_LITERAL << 24) | (offset << 5) | Rt.reg;
   return assembled;
 }
 
+// DONE
 ArmInstruction assembleUnconditionalBranchReg(const Fields *instruction) {
   ArmInstruction assembled = 0;
-  Register Rn = {true, 30};
+  Register Rn = {true, RLR};
 
   u8 op =
       instructionIndex(UNCONDITIONAL_BRANCH_REG, instruction->fields[0].value);
@@ -531,7 +641,15 @@ ArmInstruction assembleUnconditionalBranchReg(const Fields *instruction) {
   }
 
   if (instruction->n_fields != 1) {
-    parseRegister(instruction->fields[1].value, &Rn);
+    if (!parseRegister(instruction->fields[1].value, &Rn)) {
+      errorFields("Argument 1 must be register R0 - R29 or RZR/LR",
+                  instruction);
+    }
+
+    if (Rn.reg == RSP) {
+      errorFields("Argument 1 must be register R0 - R29 or RZR/LR",
+                  instruction);
+    }
 
     if (!Rn.extended) {
       errorFields("Registers must have size of 64bits", instruction);
@@ -541,137 +659,15 @@ ArmInstruction assembleUnconditionalBranchReg(const Fields *instruction) {
   const u8 Z = 0;
   const u16 op2 = 0xf80;
 
-  // return 0 so makeAssemble do not write to file
   if (ERRORS) {
     return 0;
   }
   assembled = ((u32)SOP_UNCONDITIONAL_BRANCH_REG << 25) | ((u32)Z << 24) |
-              ((u32)op << 21) | ((u32)op2 << 9) | ((u32)Rn.n << 5) | 0;
+              ((u32)op << 21) | ((u32)op2 << 9) | ((u32)Rn.reg << 5) | 0;
   return assembled;
 }
 
-ArmInstruction assembleCompareBranch(const Fields *instruction) {
-  ArmInstruction assembled = 0;
-  Register Rt;
-
-  parseRegister(instruction->fields[1].value, &Rt);
-  bool sf = Rt.extended;
-
-  i32 offset = 0;
-  i16 label_section = getLabelSection(instruction->fields[2].value);
-  if (label_section == -1) {
-    errorFields("Argument 2 - unknown label", instruction);
-  }
-
-  if (label_section == CONTEXT.cur_sndx) {
-    i64 label_pc = getLabelPc(instruction->fields[2].value);
-
-    const u8 offset_size = 19;
-    offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
-
-    offset = GENMASK(offset_size) & offset;
-    if (offset < 0) {
-      offset |= BIT(offset_size - 1);
-    }
-  } else {
-    addRelocation(instruction->fields[2].value, R_AARCH64_CONDBR19);
-  }
-
-  u8 op = instructionIndex(COMPARE_BRANCH, instruction->fields[0].value);
-
-  // return 0 so makeAssemble do not write to file
-  if (ERRORS) {
-    return 0;
-  }
-  assembled = ((u32)sf << 31) | ((u32)SOP_COMPARE_BRANCH << 25) |
-              ((u32)op << 24) | ((u32)offset << 5) | Rt.n;
-  return assembled;
-}
-
-ArmInstruction assembleTestBranch(const Fields *instruction) {
-  ArmInstruction assembled = 0;
-  Register Rt;
-
-  parseRegister(instruction->fields[1].value, &Rt);
-
-  u8 imm;
-  if (!parseImmediateU8(instruction->fields[2].value, &imm)) {
-    errorFields("Argument 2 must be x < register size && x >= 0", instruction);
-  }
-
-  bool sf = Rt.extended;
-  if (imm > 31 && !sf) {
-    errorFields("Argument 2 must be x < register size && x >= 0", instruction);
-  }
-  imm = imm & 0x1f;
-
-  i32 offset = 0;
-  i16 label_section = getLabelSection(instruction->fields[3].value);
-  if (label_section == -1) {
-    errorFields("Argument 3 - unknown label", instruction);
-  }
-
-  if (label_section == CONTEXT.cur_sndx) {
-    i64 label_pc = getLabelPc(instruction->fields[3].value);
-
-    const u8 offset_size = 14;
-    offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
-
-    offset = GENMASK(offset_size) & offset;
-    if (offset < 0) {
-      offset |= BIT(offset_size - 1);
-    }
-  } else {
-    addRelocation(instruction->fields[3].value, R_AARCH64_TSTBR14);
-  }
-
-  u8 op = instructionIndex(TEST_BRANCH, instruction->fields[0].value);
-
-  // return 0 so makeAssemble do not write to file
-  if (ERRORS) {
-    return 0;
-  }
-  assembled = ((u32)sf << 31) | ((u32)SOP_TEST_BRANCH << 25) | ((u32)op << 24) |
-              ((u32)imm << 19) | ((u32)offset << 5) | Rt.n;
-  return assembled;
-}
-
-ArmInstruction assembleConditionalBranchImm(const Fields *instruction) {
-  ArmInstruction assembled = 0;
-  ConditionType c = 0;
-  parseCondition(instruction->fields[1].value, &c);
-
-  i32 offset = 0;
-  i16 label_section = getLabelSection(instruction->fields[2].value);
-  if (label_section == -1) {
-    errorFields("Argument 2 - unknown label", instruction);
-  }
-
-  if (label_section == CONTEXT.cur_sndx) {
-    i64 label_pc = getLabelPc(instruction->fields[2].value);
-
-    const u8 offset_size = 19;
-    offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
-
-    offset = GENMASK(offset_size) & offset;
-    if (offset < 0) {
-      offset |= BIT(offset_size - 1);
-    }
-  } else {
-    addRelocation(instruction->fields[2].value, R_AARCH64_CONDBR19);
-  }
-
-  u8 o = 0;
-
-  // return 0 so makeAssemble do not write to file
-  if (ERRORS) {
-    return 0;
-  }
-  assembled = ((u32)SOP_CONDITIONAL_BRANCH_IMM << 24) | ((u32)offset << 5) |
-              (o << 4) | c;
-  return assembled;
-}
-
+// DONE
 ArmInstruction assembleUnconditionalBranchImm(const Fields *instruction) {
   ArmInstruction assembled = 0;
 
@@ -704,11 +700,159 @@ ArmInstruction assembleUnconditionalBranchImm(const Fields *instruction) {
   return assembled;
 }
 
+// DONE
+ArmInstruction assembleCompareBranch(const Fields *instruction) {
+  ArmInstruction assembled = 0;
+  Register Rt;
+
+  if (!parseRegister(instruction->fields[1].value, &Rt)) {
+    errorFields("Argument 1 must be register R0 - R29 or RZR/LR", instruction);
+  }
+
+  if (Rt.reg == RSP) {
+    errorFields("Argument 1 must be register R0 - R29 or RZR/LR",
+                instruction);
+  }
+
+  bool sf = Rt.extended;
+
+  i32 offset = 0;
+  i16 label_section = getLabelSection(instruction->fields[2].value);
+  if (label_section == -1) {
+    errorFields("Argument 2 - unknown label", instruction);
+  }
+
+  if (label_section == CONTEXT.cur_sndx) {
+    i64 label_pc = getLabelPc(instruction->fields[2].value);
+
+    const u8 offset_size = 19;
+    offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
+
+    offset = GENMASK(offset_size) & offset;
+    if (offset < 0) {
+      offset |= BIT(offset_size - 1);
+    }
+  } else {
+    addRelocation(instruction->fields[2].value, R_AARCH64_CONDBR19);
+  }
+
+  u8 op = instructionIndex(COMPARE_BRANCH, instruction->fields[0].value);
+
+  if (ERRORS) {
+    return 0;
+  }
+  assembled = ((u32)sf << 31) | ((u32)SOP_COMPARE_BRANCH << 25) |
+              ((u32)op << 24) | ((u32)offset << 5) | Rt.reg;
+  return assembled;
+}
+
+// DONE
+ArmInstruction assembleTestBranch(const Fields *instruction) {
+  ArmInstruction assembled = 0;
+  Register Rt;
+
+  if (!parseRegister(instruction->fields[1].value, &Rt)) {
+    errorFields("Argument 1 must be register R0 - R29 or RZR/LR", instruction);
+  }
+
+  if (Rt.reg == RSP) {
+    errorFields("Argument 1 must be register R0 - R29 or RZR/LR",
+                instruction);
+  }
+
+  u8 imm;
+  if (!parseImmediateU8(instruction->fields[2].value, &imm)) {
+    errorFields("Argument 2 must be 0 to (register size - 1)", instruction);
+  }
+
+  bool sf = Rt.extended;
+  bool imm_in_range = sf ? imm < 32 : imm < 64;
+  if (!imm_in_range) {
+    errorFields("Argument 2 must be 0 to (register size - 1)", instruction);
+  }
+
+  imm = imm & 0x1f;
+
+  i32 offset = 0;
+  i16 label_section = getLabelSection(instruction->fields[3].value);
+  if (label_section == -1) {
+    errorFields("Argument 3 - unknown label", instruction);
+  }
+
+  if (label_section == CONTEXT.cur_sndx) {
+    i64 label_pc = getLabelPc(instruction->fields[3].value);
+
+    const u8 offset_size = 14;
+    offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
+
+    offset = GENMASK(offset_size) & offset;
+    if (offset < 0) {
+      offset |= BIT(offset_size - 1);
+    }
+  } else {
+    addRelocation(instruction->fields[3].value, R_AARCH64_TSTBR14);
+  }
+
+  u8 op = instructionIndex(TEST_BRANCH, instruction->fields[0].value);
+
+  if (ERRORS) {
+    return 0;
+  }
+  assembled = ((u32)sf << 31) | ((u32)SOP_TEST_BRANCH << 25) | ((u32)op << 24) |
+              ((u32)imm << 19) | ((u32)offset << 5) | Rt.reg;
+  return assembled;
+}
+
+// DONE
+ArmInstruction assembleConditionalBranchImm(const Fields *instruction) {
+  ArmInstruction assembled = 0;
+  ConditionType c = 0;
+  if (!parseCondition(instruction->fields[1].value, &c)) {
+    errorFields("Unknown condition", instruction);
+  }
+
+  i32 offset = 0;
+  i16 label_section = getLabelSection(instruction->fields[2].value);
+  if (label_section == -1) {
+    errorFields("Argument 2 - unknown label", instruction);
+  }
+
+  if (label_section == CONTEXT.cur_sndx) {
+    i64 label_pc = getLabelPc(instruction->fields[2].value);
+
+    const u8 offset_size = 19;
+    offset = (label_pc - CONTEXT.pc) / ARM_INSTRUCTION_SIZE;
+
+    offset = GENMASK(offset_size) & offset;
+    if (offset < 0) {
+      offset |= BIT(offset_size - 1);
+    }
+  } else {
+    addRelocation(instruction->fields[2].value, R_AARCH64_CONDBR19);
+  }
+
+  u8 o = 0;
+
+  if (ERRORS) {
+    return 0;
+  }
+  assembled = ((u32)SOP_CONDITIONAL_BRANCH_IMM << 24) | ((u32)offset << 5) |
+              (o << 4) | c;
+  return assembled;
+}
+
+// DONE
 ArmInstruction assemblePcRelAddressing(const Fields *instruction) {
   ArmInstruction assembled = 0;
   Register Rd;
 
-  parseRegister(instruction->fields[1].value, &Rd);
+if (!parseRegister(instruction->fields[1].value, &Rd)) {
+    errorFields("Argument 1 must be register R0 - R29 or RZR/LR", instruction);
+  }
+
+  if (Rd.reg == RSP) {
+    errorFields("Argument 1 must be register R0 - R29 or RZR/LR", instruction);
+  }
 
   if (!Rd.extended) {
     errorFields("Registers must have size of 64bits", instruction);
@@ -738,123 +882,54 @@ ArmInstruction assemblePcRelAddressing(const Fields *instruction) {
   u8 immlo = offset & 3; // low 2 bits
   u32 immhi = offset >> 2; // remove low 2 bits
 
-  // return 0 so makeAssemble do not write to file
   if (ERRORS) {
     return 0;
   }
   assembled = ((u32)op << 31) | ((u32)immlo << 29) | ((u32)SOP_PC_REl << 24) |
-              ((u32)immhi << 5) | Rd.n;
+              ((u32)immhi << 5) | Rd.reg;
   return assembled;
 }
 
-// SHAMELESSLY STOLEN FROM LLVM
-
-// Is this number's binary representation all 1s?
-u8 isMask(u64 imm) { return ((imm + 1) & imm) == 0; }
-
-// Is this number's binary representation one or more 1s followed by
-// one or more 0s?
-u8 isShiftedMask(u64 imm) { return isMask((imm - 1) | imm); }
-
-#define countTrailingZeros(x) __builtin_ctzll(x)
-#define countTrailingOnes(x) __builtin_ctzll(~x)
-#define countLeadingOnes(x) __builtin_clzll(~x)
-
-bool encodeBitmaskImmediate(u64 imm, u64 *encoding, bool extended) {
-  if (imm == 0ULL || imm == ~0ULL)
-    return false;
-
-  // First, determine the element size.
-  u32 size = extended ? 64u : 32u;
-
-  do {
-    size >>= 1;
-    u64 mask = (1ULL << size) - 1;
-
-    if ((imm & mask) != ((imm >> size) & mask)) {
-      size <<= 1;
-      break;
-    }
-  } while (size > 2);
-
-  // Second, determine the rotation to make the element be: 0^m 1^n.
-  u32 cto, ctz;
-  u64 mask = ((u64)-1LL) >> (64 - size);
-  imm &= mask;
-
-  if (isShiftedMask(imm)) {
-    ctz = countTrailingZeros(imm);
-    cto = countTrailingOnes(imm >> ctz);
-  } else {
-    imm |= ~mask;
-    if (!isShiftedMask(~imm))
-      return false;
-
-    u8 clo = countLeadingOnes(imm);
-    ctz = 64 - clo;
-    cto = clo + countTrailingOnes(imm) - (64 - size);
-  }
-
-  // Encode in Immr the number of RORs it would take to get *from* 0^m 1^n
-  // to our target value, where I is the number of RORs to go the opposite
-  // direction.
-  u32 immr = (size - ctz) & (size - 1);
-
-  // If size has a 1 in the n'th bit, create a value that has zeroes in
-  // bits [0, n] and ones above that.
-  u64 nimms = ~(size - 1) << 1;
-
-  // Or the CTO value into the low bits, which must be below the Nth bit
-  // bit mentioned above.
-  nimms |= (cto - 1);
-
-  // Extract the seventh bit and toggle it to create the N field.
-  u8 N = ((nimms >> 6) & 1) ^ 1;
-
-  *encoding = (N << 12) | (immr << 6) | (nimms & 0x3f);
-  return true;
-}
-
-ArmInstruction assembleLogicalImm(const Fields *instruction) {
+// DONE
+ArmInstruction assembleException(const Fields *instruction) {
   ArmInstruction assembled = 0;
+  const char *mnemonic = instruction->fields->value;
 
-  Register Rd;
-  Register Rn;
+  // base parameters to encode SVC, HVC, SMC
+  u8 LL = instructionIndex(EXCEPTION, mnemonic) + 1;
+  u8 opc = 0; 
 
-  parseRegister(instruction->fields[1].value, &Rd);
-  parseRegister(instruction->fields[2].value, &Rn);
-
-  bool sf = 0;
-  if (Rd.extended && Rn.extended) {
-    sf = 1;
-  } else if (!Rd.extended && !Rn.extended) {
-    sf = 0;
-  } else {
-    errorFields("Registers must have same size", instruction);
+  u16 imm = 0;
+  if (*instruction->fields->value == 'D') {
+    opc = 5; // 0b101 - opc for DPCS
+    LL = mnemonic[strlen(mnemonic) - 1] - '0';
   }
 
-  u64 imm = 0;
-  parseImmediateU64(instruction->fields[3].value, &imm);
-
-  u64 encoding;
-  if (!encodeBitmaskImmediate(imm, &encoding, sf)) {
-    errorFields("Argument 3 must be immediate a 32-bit or 64-bit pattern of "
-                "identical elements of size = 2, 4, 8, 16, 32, or 64 bits",
-                instruction);
+  if (*mnemonic == 'B') {
+    opc = 1;
+  }
+  if (*mnemonic == 'H') {
+    opc = 2;
+  }
+  if (*mnemonic == 'T') {
+    opc = 3;
   }
 
-  u8 opc = instructionIndex(LOGICAL_IMM, instruction->fields[0].value);
+  imm = 0;
+  if (!parseImmediateU16(instruction->fields[1].value, &imm)) {
+    errorFields("Argument 1 must have type uint16", instruction);
+  }
 
-  // return 0 so makeAssemble do not write to file
   if (ERRORS) {
     return 0;
   }
-  assembled = ((u32)sf << 31) | ((u32)opc << 29) |
-              ((u32)SOP_LOGICAL_IMM << 23) | (encoding << 10) |
-              ((u32)Rn.n << 5) | Rd.n;
+  assembled = ((u32)SOP_EXCEPTIONS << 24u) | ((u32)opc << 21u) |
+              ((u32)imm << 5u) | LL;
+
   return assembled;
 }
 
+// DONE
 ArmInstruction assembleLogicalShReg(const Fields *instruction) {
   ArmInstruction assembled = 0;
 
@@ -862,9 +937,15 @@ ArmInstruction assembleLogicalShReg(const Fields *instruction) {
   Register Rn;
   Register Rm;
 
-  parseRegister(instruction->fields[1].value, &Rd);
-  parseRegister(instruction->fields[2].value, &Rn);
-  parseRegister(instruction->fields[3].value, &Rm);
+  if (!parseRegister(instruction->fields[1].value, &Rd) ||
+      !parseRegister(instruction->fields[2].value, &Rn) ||
+      !parseRegister(instruction->fields[3].value, &Rm)) {
+    errorFields("Arguments 1, 2, 3 must be registers R0 - R29 or RZR/LR", instruction);
+  }
+
+  if (Rd.reg == RSP || Rn.reg == RSP || Rm.reg == RSP) {
+    errorFields("Arguments 1, 2, 3 must be registers R0 - R29 or RZR/LR", instruction);
+  }
 
   bool sf = 0;
   if (Rd.extended && Rn.extended && Rm.extended) {
@@ -878,12 +959,15 @@ ArmInstruction assembleLogicalShReg(const Fields *instruction) {
   ShiftType t = SH_LSL;
   u8 sh_imm = 0;
   if (instruction->n_fields == 6) {
-    parseShift(instruction->fields[4].value, &t);
+    if (!parseShift(instruction->fields[4].value, &t)) {
+      errorFields("Unknown shift", instruction);
+    }
+
     if (!parseImmediateU8(instruction->fields[5].value, &sh_imm)) {
       errorFields("Argument 5 must be x < register size && x >= 0", instruction);
     }
     if (sh_imm >= (sf ? 64 : 32)) {
-      errorFields("Argument 5 must be x < register size && x >= 0", instruction);
+      errorFields("Argument 5 must be 0 to (register size - 1)", instruction);
     }
   }
 
@@ -901,22 +985,25 @@ ArmInstruction assembleLogicalShReg(const Fields *instruction) {
   u8 N = opc & 1;
   opc = opc >> 1;
 
-  // return 0 so makeAssemble do not write to file
   if (ERRORS) {
     return 0;
   }
   assembled = ((u32)sf << 31) | ((u32)opc << 29) |
               ((u32)SOP_LOGICAL_SH_REG << 24) | ((u32)t << 22) |
-              ((u32)N << 21) | ((u32)Rm.n << 16) | ((u32)sh_imm << 10) |
-              ((u32)Rn.n << 5) | Rd.n;
+              ((u32)N << 21) | ((u32)Rm.reg << 16) | ((u32)sh_imm << 10) |
+              ((u32)Rn.reg << 5) | Rd.reg;
 
   return assembled;
 }
 
+// DONE
 ArmInstruction assembleMoveWide(const Fields *instruction) {
   ArmInstruction assembled = 0;
-  Register Rd;
-  parseRegister(instruction->fields[1].value, &Rd);
+  Register Rd = {true, REG_SP};
+
+  if (!parseRegister(instruction->fields[1].value, &Rd) || Rd.reg == REG_SP) {
+    errorFields("Argument 1 must be register R0 - R29 or RZR/LR", instruction);
+  }
 
   u16 imm = 0;
   if (!parseImmediateU16(instruction->fields[2].value, &imm)) {
@@ -928,7 +1015,9 @@ ArmInstruction assembleMoveWide(const Fields *instruction) {
   ShiftType t = SH_LSL;
   u8 sh_imm = 0;
   if (instruction->n_fields > 3) {
-    parseShift(instruction->fields[3].value, &t);
+    if (!parseShift(instruction->fields[3].value, &t)) {
+      errorFields("Unknown shift", instruction);
+    }
 
     if (t != SH_LSL) {
       errorFields("Only 'LSL' shift allowed", instruction);
@@ -941,7 +1030,7 @@ ArmInstruction assembleMoveWide(const Fields *instruction) {
     if (sf && (sh_imm > 48 || sh_imm % 16 != 0)) {
       errorFields("Argument 4 must be multiple of 16 and be less than 48", instruction);
     } else if (!sf && sh_imm != 0 && sh_imm != 16) {
-      errorFields("Argument 4 must be 16 or 0", instruction);
+      errorFields("Argument 4 must be 0 or 16", instruction);
     }
   }
 
@@ -952,23 +1041,38 @@ ArmInstruction assembleMoveWide(const Fields *instruction) {
 
   u8 hw = sh_imm / 16;
 
-  // return 0 so makeAssemble do not write to file
   if (ERRORS) {
     return 0;
   }
   assembled = ((u32)sf << 31) | ((u32)opc << 29) | ((u32)SOP_MOVE_WIDE << 23) |
-              ((u32)hw << 21) | ((u32)imm << 5) | Rd.n;
+              ((u32)hw << 21) | ((u32)imm << 5) | Rd.reg;
   return assembled;
 }
 
+// DONE
 ArmInstruction assembleAddSubImm(const Fields *instruction) {
   ArmInstruction assembled = 0;
 
   Register Rd;
   Register Rn;
 
-  parseRegister(instruction->fields[1].value, &Rd);
-  parseRegister(instruction->fields[2].value, &Rn);
+  if (!parseRegister(instruction->fields[1].value, &Rd) ||
+      !parseRegister(instruction->fields[2].value, &Rn)) {
+    errorFields("Arguments 1 and 2 must be registers", instruction);
+  }
+
+  if (Rn.reg == RSP) {
+    Rn.reg = REG_SP;
+  }
+
+  if (Rd.reg == RSP) {
+    bool signed_ = instruction->fields->value[strlen(instruction->fields->value) - 1] == 's';
+    if (signed_) {
+      Rd.reg = REG_SP;
+    } else {
+      errorFields("Argument 1 for instruction must be R0 - R29 or RZR/LR", instruction);
+    }
+  }
 
   bool sf = 0;
   if (Rd.extended && Rn.extended) {
@@ -981,17 +1085,19 @@ ArmInstruction assembleAddSubImm(const Fields *instruction) {
 
   u16 imm;
   if (!parseImmediateU16(instruction->fields[3].value, &imm)) {
-    errorFields("Argument 3 must be x <= 4095 && x >= 0", instruction);
+    errorFields("Argument 3 must be 0 to 4095", instruction);
   }
 
   if (imm > 4095) {
-    errorFields("Argument 3 must be x <= 4095 && x >= 0", instruction);
+    errorFields("Argument 3 must be 0 to 4095", instruction);
   }
 
   ShiftType t = SH_LSL;
   u8 sh_imm = 0;
   if (instruction->n_fields == 6) {
-    parseShift(instruction->fields[4].value, &t);
+    if (!parseShift(instruction->fields[4].value, &t)) {
+      errorFields("Unknown shift", instruction);
+    }
 
     if (t != SH_LSL) {
       errorFields("Only 'LSL 12' or 'LSL 0' allowed", instruction);
@@ -1011,97 +1117,68 @@ ArmInstruction assembleAddSubImm(const Fields *instruction) {
 
   bool sh = sh_imm == 12;
 
-  // return 0 so makeAssemble do not write to file
   if (ERRORS) {
     return 0;
   }
   assembled = ((u32)sf << 31) | ((u32)op << 30) | ((u32)S << 29) |
               ((u32)SOP_ADD_SUB_IMM << 23) | ((u32)sh << 22) |
-              ((u32)imm << 10) | ((u32)Rn.n << 5) | Rd.n;
+              ((u32)imm << 10) | ((u32)Rn.reg << 5) | Rd.reg;
 
   return assembled;
 }
 
-ArmInstruction assembleException(const Fields *instruction) {
+// DONE
+ArmInstruction assembleLogicalImm(const Fields *instruction) {
   ArmInstruction assembled = 0;
 
-  u8 LL = instructionIndex(EXCEPTION, instruction->fields[0].value) + 1;
-  u8 opc = 5; // 0b101
+  Register Rd;
+  Register Rn;
 
-  u16 imm = 0;
-  if (instruction->n_fields > 1) {
-    if (!parseImmediateU16(instruction->fields[1].value, &imm)) {
-      errorFields("Argument 1 must have type uint16", instruction);
-    }
+  if (!parseRegister(instruction->fields[1].value, &Rd) ||
+      !parseRegister(instruction->fields[2].value, &Rn)) {
+    errorFields("Arguments 1 and 2 must be registers", instruction);
+  }
 
-    // opc  LL  mnemonic
-    // 101  01  DCPS1
-    // 101  10  DCPS2
-    // 101  11  DCPS3
-    // do not process DCPS* instructions since the already set
-    if (*instruction->fields[0].value != 'd') {
-      // opc  LL  mnemonic
-      // 000  01  SVC
-      // 000  10  HVC
-      // 000  11  SMC
-      // LL already set
-      opc = 0;
-      if (LL - 1 > 2) {
-        // opc  LL  0bLL  0bLL - 1  (0bLL - 1) >> 1  mnemonic
-        // 001  4   0100  0011      0001             BRK
-        // 010  5   0101  0100      0010             HLT
-        // 010  6   0110  0101      0010             TCANCEL
-        opc = (LL - 1) >> 1;
-        LL = 0;
-      }
+  if (Rd.reg == RSP) {
+    Rd.reg = REG_SP;
+  }
+
+  if (Rn.reg == RSP) {
+    errorFields("Argument 2 must be register R0 - R29 or RZR/LR", instruction);
+  }
+
+  bool sf = 0;
+  if (Rd.extended && Rn.extended) {
+    sf = 1;
+  } else if (!Rd.extended && !Rn.extended) {
+    sf = 0;
+  } else {
+    errorFields("Registers must have same size", instruction);
+  }
+
+  u64 imm = 0;
+  u64 encoding;
+  if (!parseImmediateU64(instruction->fields[3].value, &imm)) {
+    errorFields("Argument 3 must be immediate a 32-bit or 64-bit pattern of "
+                "identical elements of size = 2, 4, 8, 16, 32, or 64 bits",
+                instruction);
+  } else {
+    if (!encodeBitmaskImmediate(imm, &encoding, sf)) {
+      errorFields("Argument 3 must be immediate a 32-bit or 64-bit pattern of "
+                  "identical elements of size = 2, 4, 8, 16, 32, or 64 bits",
+                  instruction);
     }
   }
 
-  // return 0 so makeAssemble do not write to file
+  u8 opc = instructionIndex(LOGICAL_IMM, instruction->fields[0].value);
+
   if (ERRORS) {
     return 0;
   }
-  assembled = ((u32)SOP_EXCEPTIONS << 24u) | ((u32)opc << 21u) |
-              ((u32)imm << 5u) | (0 << 2u) | LL;
-
+  assembled = ((u32)sf << 31) | ((u32)opc << 29) |
+              ((u32)SOP_LOGICAL_IMM << 23) | (encoding << 10) |
+              ((u32)Rn.reg << 5) | Rd.reg;
   return assembled;
-}
-
-u8 compareSignatures(const Signature *s1, const Signature *s2) {
-  u8 i = 0;
-  while (i < s1->n_args) {
-    // if args differs from what expected and optional not set
-    if (s1->args[i] != s2->args[i] && !(s1->args[i] & OPTIONAL)) {
-      return 0;
-    }
-    i++;
-  }
-
-  return 1;
-}
-
-InstructionType getInstructionType(const char *mnemonic, Signature *s) {
-  for (u64 i = 0; i < sizeof(INSTRUCTIONS) / sizeof(*INSTRUCTIONS); i++) {
-    if (compareSignatures(&INSTRUCTIONS[i].s, s)) {
-      u8 j = 0;
-      while (INSTRUCTIONS[i].mnemonic[j]) {
-        if (strcmp(INSTRUCTIONS[i].mnemonic[j], mnemonic) == 0) {
-          return INSTRUCTIONS[i].type;
-        }
-        j++;
-      }
-    }
-  }
-  return NONE;
-}
-
-Signature getSignature(const Fields *instruction) {
-  Signature s = {0};
-  for (u8 i = 1; i < instruction->n_fields; i++) {
-    s.args[i - 1] = instruction->fields[i].type;
-  }
-  s.n_args = instruction->n_fields - 1;
-  return s;
 }
 
 ArmInstruction assemble(const Fields *instruction) {
@@ -1128,12 +1205,12 @@ ArmInstruction assemble(const Fields *instruction) {
   case EXCEPTION:
     i = assembleException(instruction);
     break;
-  case LDR_STR_REG:
-    i = assembleLdrStrReg(instruction);
-    break;
-  case LDR_STR_IMM:
-    i = assembleLdrStrImm(instruction);
-    break;
+//  case LDR_STR_REG:
+//    i = assembleLdrStrReg(instruction);
+//    break;
+//  case LDR_STR_IMM:
+//    i = assembleLdrStrImm(instruction);
+//    break;
   case PCRELADDRESSING:
     i = assemblePcRelAddressing(instruction);
     break;
@@ -1158,6 +1235,7 @@ ArmInstruction assemble(const Fields *instruction) {
   case CONDITIONAL_COMPARE_IMM:
     i = assembleConditionalCompareImm(instruction);
     break;
+  default:
   case NONE:
     if (searchMnemonic(instruction->fields->value)) {
       errorFields("Incorrect arguments for instruction", instruction);

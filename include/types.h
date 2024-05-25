@@ -5,28 +5,30 @@
 
 typedef u32 ArmInstruction;
 
-typedef enum {
-  T_NONE,
-  T_EOL,
+#define BIT(p) (1ull << (p))
 
-  T_DIRECTIVE,
-  T_INSTRUCTION,
-  T_LABEL_DECLARATION,
+typedef enum {
+  T_NONE              = BIT(0),
+  T_EOL               = BIT(1),
+
+  T_DIRECTIVE         = BIT(2),
+  T_INSTRUCTION       = BIT(3),
+  T_LABEL_DECLARATION = BIT(4),
 
   // args
-  T_LABEL,
-  T_REGISTER,
-  T_IMMEDIATE,
-  T_SHIFT,
-  T_EXTEND,
-  T_CONDITION,
-  T_STRING,
+  T_LABEL             = BIT(5),
+  T_REGISTER          = BIT(6),
+  T_IMMEDIATE         = BIT(7),
+  T_SHIFT             = BIT(8),
+  T_EXTEND            = BIT(9),
+  T_CONDITION         = BIT(10),
+  T_STRING            = BIT(11),
 
   // one symbol tokens
-  T_RSBRACE,
-  T_LSBRACE,
-  T_BANG,
-  T_EQUAL,
+  T_RSBRACE           = BIT(12),
+  T_LSBRACE           = BIT(13),
+  T_BANG              = BIT(14),
+  T_EQUAL             = BIT(15),
 } TokenType;
 
 typedef struct Token {
