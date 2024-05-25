@@ -27,6 +27,7 @@ u8 collectLineOfTokens(Fields *f) {
     f->n_fields++;
     ok = getToken(CONTEXT.cur_src, f->fields + f->n_fields);
   }
+  f->n_fields++;
 
   return ok;
 }

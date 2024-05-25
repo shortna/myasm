@@ -7,10 +7,10 @@
 #include <string.h>
 
 u8 dGlobal(const Fields *f) {
-  if (f->n_fields < 2) {
+  if (f->n_fields < 3) {
     errorFields("Please specify label name", f);
     return 0;
-  } else if (f->n_fields > 2) {
+  } else if (f->n_fields > 3) {
     errorFields("Too many arguments", f);
     return 0;
   }
@@ -63,10 +63,10 @@ u8 decodeFlags(const char *flags, u64 *res) {
 }
 
 u8 dSection(const Fields *f) {
-  if (f->n_fields < 3) {
+  if (f->n_fields < 4) {
     errorFields("Incorrect directive format", f);
     return 0;
-  } else if(f->n_fields > 3) {
+  } else if(f->n_fields > 4) {
     errorFields("Too many arguments", f);
     return 0;
   }

@@ -49,7 +49,9 @@ typedef enum InstructionType {
   TEST_BRANCH,
   LDR_LITERAL,
   LDR_STR_REG,
-  LDR_STR_IMM,
+  LDR_STR_IMM_POST_INDEX,
+  LDR_STR_IMM_PRE_INDEX,
+  LDR_STR_IMM_UNSIGNDE_OFFSET,
   CONDITIONAL_COMPARE_REG,
   CONDITIONAL_COMPARE_IMM,
 } InstructionType;
@@ -77,10 +79,11 @@ static const Instruction INSTRUCTIONS[] = {
     {{"svc", "hvc", "smc", "brk", "hlt", "tcancel", "dcps1", "dcps2", "dcps3"}, EXCEPTION, {T_IMMEDIATE, T_EOL}},
     {{"and", "orr", "eor", "ands"}, LOGICAL_IMM, {T_REGISTER, T_REGISTER, T_IMMEDIATE, T_EOL}},
 
-    {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_REG, {T_REGISTER, T_REGISTER, T_REGISTER, T_EXTEND | T_SHIFT | OPTIONAL, T_EOL}},
-//                                                                                           {T_REGISTER, T_REGISTER | SP, T_REGISTER, T_EXTEND | T_SHIFT | OPTIONAL, T_EOL}
-    {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_IMM, {T_REGISTER, T_REGISTER, T_IMMEDIATE | OPTIONAL, T_EOL}},
-//                                                                                           {T_REGISTER, T_REGISTER | SP, T_IMMEDIATE | OPTIONAL, T_EOL}
+    {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_REG, {T_REGISTER, T_RSBRACE, T_REGISTER, T_REGISTER, T_EXTEND | T_SHIFT | OPTIONAL, T_IMMEDIATE | OPTIONAL, T_LSBRACE, T_EOL}},
+
+    {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_IMM_POST_INDEX,      {T_REGISTER, T_RSBRACE, T_REGISTER, T_LSBRACE, T_IMMEDIATE, T_EOL}},
+    {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_IMM_PRE_INDEX,       {T_REGISTER, T_RSBRACE, T_REGISTER, T_IMMEDIATE, T_LSBRACE, T_BANG, T_EOL}},
+    {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_IMM_UNSIGNDE_OFFSET, {T_REGISTER, T_RSBRACE, T_REGISTER, T_LSBRACE | T_IMMEDIATE, T_LSBRACE | OPTIONAL, T_EOL}},
 
     {{"ccmn", "ccmp"}, CONDITIONAL_COMPARE_REG, {T_REGISTER, T_REGISTER, T_IMMEDIATE, T_CONDITION, T_EOL}},
     {{"ccmn", "ccmp"}, CONDITIONAL_COMPARE_IMM, {T_REGISTER, T_IMMEDIATE, T_IMMEDIATE, T_CONDITION, T_EOL}},
@@ -117,12 +120,17 @@ u8 instructionIndex(InstructionType type, const char *mnemonic) {
 
 u8 compareSignatures(const Signature *s1, const Signature *s2) {
   u8 i = 0;
+  u8 j = 0;
   while (s1->args[i] != T_EOL) {
     // if args differs from what expected and optional not set
-    if (s1->args[i] != s2->args[i] && !(s1->args[i] & OPTIONAL)) {
-      return 0;
+    if (!(s1->args[i] & s2->args[j])) {
+      if (!(s1->args[i] & OPTIONAL)) {
+        return 0;
+      }
+      j--;
     }
     i++;
+    j++;
   }
 
   return 1;
@@ -145,10 +153,8 @@ InstructionType getInstructionType(const char *mnemonic, Signature *s) {
 
 Signature getSignature(const Fields *instruction) {
   Signature s = {0};
-  u8 i = 1;
-  while (instruction->fields[i].type != T_EOL) { 
+  for (u8 i = 1; i < instruction->n_fields; i++) {
     s.args[i - 1] = instruction->fields[i].type;
-    i++;
   }
   return s;
 }
@@ -225,23 +231,21 @@ bool encodeBitmaskImmediate(u64 imm, u64 *encoding, bool extended) {
 /* INSTRUCINONS ENCODING */
 /*************************/
 
-// requires revision
-/*
 // WHAT THE FUCK
-ArmInstruction assembleLdrStrImm(const Fields *instruction) {
+ArmInstruction assembleLdrStrImm(const Fields *instruction, InstructionType type) {
   ArmInstruction assembled = 0;
 
   Register Rt, Rn;
   if (!parseRegister(instruction->fields[1].value, &Rt)) {
-    errorFields("Argument 1 must be register between R0 - R29 or RZR/LR", instruction);
+    errorFields("Argument 1 must be register R0 - R29 or RZR/LR", instruction);
   }
 
   if (Rt.reg == RSP) {
-    errorFields("Argument 1 must be register between R0 - R29 or RZR/LR", instruction);
+    errorFields("Argument 1 must be register R0 - R29 or RZR/LR", instruction);
   }
 
   if (!parseRegister(instruction->fields[3].value, &Rn)) {
-    errorFields("Argument 1 must be any extended register", instruction);
+    errorFields("Argument 2 must be any extended register", instruction);
   }
 
   if (Rn.reg == RSP) {
@@ -254,7 +258,7 @@ ArmInstruction assembleLdrStrImm(const Fields *instruction) {
 
   u8 size = 0;
   const char instruction_postfix =
-      instruction->fields[0].value[strlen(instruction->fields[0].value) - 1];
+      instruction->fields->value[strlen(instruction->fields->value) - 1];
 
   u32 pimm_cap = 0;
   u8 scale = 1;
@@ -293,42 +297,51 @@ ArmInstruction assembleLdrStrImm(const Fields *instruction) {
   }
 
   i64 imm = 0;
-  u8 imm_ind = 1;
-  for (u8 i = 1; i < instruction->n_fields; i++) {
-    if (instruction->fields[i].type == T_IMMEDIATE) {
-      imm_ind = i;
-    }
-  }
-
+  u8 imm_ind = 0;
   u8 op = SOP_LDR_STR_IMM;
-  // unsigned offset
-  if (instruction->fields[instruction->n_fields - 1].type == T_LSBRACE) {
+
+  if (type == LDR_STR_IMM_UNSIGNDE_OFFSET) {
+    if (instruction->fields[4].type == T_LSBRACE &&
+        instruction->fields[5].type != T_EOL) {
+      errorFields("Incorrect arguments for instruction", instruction);
+    }
+    if (instruction->fields[4].type == T_IMMEDIATE &&
+        instruction->fields[5].type != T_LSBRACE) {
+      errorFields("Incorrect arguments for instruction", instruction);
+    }
+
     op = SOP_LDR_STR_UIMM;
-    if (instruction->n_fields != 5) {
-      if (!parseImmediateU32(instruction->fields[imm_ind].value, (u32 *)&imm)) {
-        errorFields("Immediate must have type uint32", instruction);
+    if (instruction->fields[4].type == T_IMMEDIATE) {
+      if (!parseImmediateU32(instruction->fields[4].value, (u32 *)&imm)) {
+        errorFields("Argument 4 must have type of uint32", instruction);
       }
       if (imm > pimm_cap || imm % scale != 0) {
-        errorFields("Immediate must be a multiple of 4 in the range 0 to 4095 "
-                    "for 8bits, 0 to 8190 for 16bits, 0 to 16380 for 32bits and "
-                    "in range 0 to 32760 for 64bits",
-                    instruction);
+        errorFields(
+            "Immediate must be a multiple of 4 in the range 0 to 4095 "
+            "for 8bits, 0 to 8190 for 16bits, 0 to 16380 for 32bits and "
+            "in range 0 to 32760 for 64bits",
+            instruction);
       }
+      imm = GENMASK(12) & (imm / scale);
     }
-    imm = GENMASK(12) & (imm / scale);
-  }
-  // pre index
-  // post index
-  else {
+  } else {
+    bool pre_indexed = false;
+    if (type == LDR_STR_IMM_PRE_INDEX) {
+      pre_indexed = true;
+      imm_ind = 4;
+    } else {
+      imm_ind = 5;
+    }
+
     if (!parseImmediateI64(instruction->fields[imm_ind].value, &imm)) {
-      errorFields("Failed to parse index", instruction);
+      errorFields("Failed to parse immediate", instruction);
     }
+
     if (imm < -256 || imm > 255) {
       errorFields("Immediate must be in range -256 to 255", instruction);
     }
     imm = GENMASK(9) & imm; // theres some junk in, why?
-    bool pre_indexed =
-        instruction->fields[instruction->n_fields - 1].type == T_BANG;
+                            
     // if pre-indexed 3 else 1
     imm = GENMASK(12) & ((imm << 2) | (pre_indexed ? 3 : 1));
     if ((i32)imm < 0) {
@@ -336,11 +349,11 @@ ArmInstruction assembleLdrStrImm(const Fields *instruction) {
     }
   }
 
-  bool signed_ = instruction->fields->value[3] == 's';
+  bool signed_ = instruction->fields->value[strlen(instruction->fields->value) - 1] == 's';
   // "strb", "ldrb", "strh", "ldrh" - accepts as Rt only 32 bit register
   if (!signed_ && size < 2 && Rt.extended) {
     errorFields(
-        "'strb', 'ldrb', 'strh', 'ldrh' - accepts as Argument 1 only 32 bit register",
+        "Instruction accepts as argument 1 only 32 bit register",
         instruction);
   }
 
@@ -365,9 +378,19 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {
   ArmInstruction assembled = 0;
   Register Rt, Rn, Rm;
 
-  parseRegister(instruction->fields[1].value, &Rt);
-  parseRegister(instruction->fields[3].value, &Rn);
-  parseRegister(instruction->fields[4].value, &Rm);
+  if (!parseRegister(instruction->fields[1].value, &Rt) ||
+      !parseRegister(instruction->fields[3].value, &Rn) ||
+      !parseRegister(instruction->fields[4].value, &Rm)) {
+    errorFields("Arguments 1, 2, 3 must be registers", instruction);
+  }
+
+  if (Rt.reg == RSP || Rm.reg == RSP) {
+    errorFields("Arguments 1 and 3 must be registers R0 - R29 or RZR/LR", instruction);
+  }
+
+  if (Rn.reg == RSP) {
+    Rn.reg = REG_SP;
+  }
 
   if (!Rn.extended) {
     errorFields("Argument 2 must have size of 64bits", instruction);
@@ -401,7 +424,7 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {
   // "strb", "ldrb", "strh", "ldrh" - accepts as Rt only 32 bit register
   if (!signed_ && size < 2 && Rt.extended) {
     errorFields(
-        "'strb', 'ldrb', 'strh', 'ldrh' - accepts as Argument 1 only 32 bit register",
+        "Instruction accepts as argument 1 only 32 bit register",
         instruction);
   }
 
@@ -437,7 +460,7 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {
       case SXTW:
         if (Rm.extended) {
           errorFields(
-              "Argument 4 'with UXTW or SXTW shift' must have size of 32bits",
+              "If using UXTW or SXTW shiftS argument 4 must have size of 32bits",
               instruction);
         }
         option = 2;
@@ -447,14 +470,13 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {
         break;
       case SXTX:
         if (!Rm.extended) {
-          errorFields("Argument 4 'with SXTX shift' must have size of 64bits",
+          errorFields("If using SXTX shift argument 4 must have size of 64bits",
                       instruction);
         }
         option = 7;
         break;
       default:
         errorFields("Unknown shift", instruction);
-        return 0;
       }
     }
     if (instruction->fields[6].type == T_IMMEDIATE) {
@@ -463,7 +485,7 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {
       }
       if (imm != size && imm != 0) {
         errorFields(
-            "Argument 5 must equals 0 or size specified by instruction",
+            "Argument 5 must equals 0 or size (in bytes) specified by instruction. e.g ldrsb b - 1 byte",
             instruction);
       }
       if (imm == size) {
@@ -476,11 +498,10 @@ ArmInstruction assembleLdrStrReg(const Fields *instruction) {
     return 0;
   }
   assembled = ((u32)size << 30) | ((u32)SOP_LDR_STR_REG << 24) |
-              ((u32)opc << 21) | ((u32)Rm.n << 16) | ((u32)option << 13) |
-              ((u32)S << 10) | ((u32)Rn.n << 5) | Rt.n;
+              ((u32)opc << 21) | ((u32)Rm.reg << 16) | ((u32)option << 13) |
+              ((u32)S << 10) | ((u32)Rn.reg << 5) | Rt.reg;
   return assembled;
 }
-*/
 
 // DONE
 ArmInstruction assembleConditionalCompareImm(const Fields *instruction) {
@@ -636,11 +657,11 @@ ArmInstruction assembleUnconditionalBranchReg(const Fields *instruction) {
 
   u8 op =
       instructionIndex(UNCONDITIONAL_BRANCH_REG, instruction->fields[0].value);
-  if (instruction->n_fields == 1 && op != 2) {
+  if (instruction->n_fields == 2 && op != 2) {
     errorFields("Not enough arguments", instruction);
   }
 
-  if (instruction->n_fields != 1) {
+  if (instruction->n_fields != 2) {
     if (!parseRegister(instruction->fields[1].value, &Rn)) {
       errorFields("Argument 1 must be register R0 - R29 or RZR/LR",
                   instruction);
@@ -766,7 +787,7 @@ ArmInstruction assembleTestBranch(const Fields *instruction) {
   }
 
   bool sf = Rt.extended;
-  bool imm_in_range = sf ? imm < 32 : imm < 64;
+  bool imm_in_range = sf ? imm < 64 : imm < 32;
   if (!imm_in_range) {
     errorFields("Argument 2 must be 0 to (register size - 1)", instruction);
   }
@@ -958,7 +979,7 @@ ArmInstruction assembleLogicalShReg(const Fields *instruction) {
 
   ShiftType t = SH_LSL;
   u8 sh_imm = 0;
-  if (instruction->n_fields == 6) {
+  if (instruction->n_fields > 5 ) {
     if (!parseShift(instruction->fields[4].value, &t)) {
       errorFields("Unknown shift", instruction);
     }
@@ -1014,7 +1035,7 @@ ArmInstruction assembleMoveWide(const Fields *instruction) {
 
   ShiftType t = SH_LSL;
   u8 sh_imm = 0;
-  if (instruction->n_fields > 3) {
+  if (instruction->n_fields > 4) {
     if (!parseShift(instruction->fields[3].value, &t)) {
       errorFields("Unknown shift", instruction);
     }
@@ -1067,7 +1088,7 @@ ArmInstruction assembleAddSubImm(const Fields *instruction) {
 
   if (Rd.reg == RSP) {
     bool signed_ = instruction->fields->value[strlen(instruction->fields->value) - 1] == 's';
-    if (signed_) {
+    if (!signed_) {
       Rd.reg = REG_SP;
     } else {
       errorFields("Argument 1 for instruction must be R0 - R29 or RZR/LR", instruction);
@@ -1094,7 +1115,7 @@ ArmInstruction assembleAddSubImm(const Fields *instruction) {
 
   ShiftType t = SH_LSL;
   u8 sh_imm = 0;
-  if (instruction->n_fields == 6) {
+  if (instruction->n_fields > 5) {
     if (!parseShift(instruction->fields[4].value, &t)) {
       errorFields("Unknown shift", instruction);
     }
@@ -1229,13 +1250,20 @@ ArmInstruction assemble(const Fields *instruction) {
   case LDR_LITERAL:
     i = assembleLdrLiteral(instruction);
     break;
+  case LDR_STR_REG:
+    i = assembleLdrStrReg(instruction);
+    break;
   case CONDITIONAL_COMPARE_REG:
     i = assembleConditionalCompareReg(instruction);
     break;
   case CONDITIONAL_COMPARE_IMM:
     i = assembleConditionalCompareImm(instruction);
     break;
-  default:
+  case LDR_STR_IMM_POST_INDEX:
+  case LDR_STR_IMM_PRE_INDEX:
+  case LDR_STR_IMM_UNSIGNDE_OFFSET:
+    i = assembleLdrStrImm(instruction, it);
+    break;
   case NONE:
     if (searchMnemonic(instruction->fields->value)) {
       errorFields("Incorrect arguments for instruction", instruction);

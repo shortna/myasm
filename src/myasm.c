@@ -97,7 +97,8 @@ void errorToken(const char *msg, const Token *t) {
 
 void errorFields(const char *msg, const Fields *f) {
   error(msg);
-  for (u8 i = 0; i < f->n_fields; i++) {
+  u8 len = f->fields[f->n_fields - 1].type == T_EOL ? f->n_fields - 1 : f->n_fields;
+  for (u8 i = 0; i < len; i++) {
     fprintf(stderr, "%s ", f->fields[i].value);
   }
   fprintf(stderr, "\n");
