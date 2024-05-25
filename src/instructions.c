@@ -73,9 +73,9 @@ static const Instruction INSTRUCTIONS[] = {
     {{"ldr", "ldrsw"}, LDR_LITERAL, {T_REGISTER, T_LABEL, T_EOL}},
 
     {{"br", "blr", "ret"}, UNCONDITIONAL_BRANCH_REG, {T_REGISTER | OPTIONAL, T_EOL}},
-    {{"movn", "movz", "movk"}, MOVEWIDE, {T_REGISTER, T_IMMEDIATE, T_SHIFT | OPTIONAL, T_EOL}},
-    {{"add", "sub", "adds", "subs"}, ADDSUB_IMM, {T_REGISTER, T_REGISTER, T_IMMEDIATE, T_SHIFT | OPTIONAL, T_EOL}},
-    {{"and", "bic", "orr", "orn", "eor", "eon", "ands", "bics"}, LOGICAL_SH_REG, {T_REGISTER, T_REGISTER, T_REGISTER, T_SHIFT | OPTIONAL, T_EOL}},
+    {{"movn", "movz", "movk"}, MOVEWIDE, {T_REGISTER, T_IMMEDIATE, T_SHIFT | OPTIONAL, T_IMMEDIATE | OPTIONAL, T_EOL}},
+    {{"add", "sub", "adds", "subs"}, ADDSUB_IMM, {T_REGISTER, T_REGISTER, T_IMMEDIATE, T_SHIFT | OPTIONAL, T_IMMEDIATE | OPTIONAL, T_EOL}},
+    {{"and", "bic", "orr", "orn", "eor", "eon", "ands", "bics"}, LOGICAL_SH_REG, {T_REGISTER, T_REGISTER, T_REGISTER, T_SHIFT | OPTIONAL, T_IMMEDIATE | OPTIONAL, T_EOL}},
     {{"svc", "hvc", "smc", "brk", "hlt", "tcancel", "dcps1", "dcps2", "dcps3"}, EXCEPTION, {T_IMMEDIATE, T_EOL}},
     {{"and", "orr", "eor", "ands"}, LOGICAL_IMM, {T_REGISTER, T_REGISTER, T_IMMEDIATE, T_EOL}},
 
@@ -129,8 +129,11 @@ u8 compareSignatures(const Signature *s1, const Signature *s2) {
       }
       j--;
     }
-    i++;
     j++;
+    i++;
+  }
+  if (s2->args[j] != T_EOL) {
+    return 0;
   }
 
   return 1;
@@ -1226,12 +1229,6 @@ ArmInstruction assemble(const Fields *instruction) {
   case EXCEPTION:
     i = assembleException(instruction);
     break;
-//  case LDR_STR_REG:
-//    i = assembleLdrStrReg(instruction);
-//    break;
-//  case LDR_STR_IMM:
-//    i = assembleLdrStrImm(instruction);
-//    break;
   case PCRELADDRESSING:
     i = assemblePcRelAddressing(instruction);
     break;

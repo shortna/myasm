@@ -1,4 +1,13 @@
+movk x0,0,lsl 0
 .global _start
+
+.section .data,"wa"
+msg:
+  .ascii "Hello, World! "
+var:
+  .ascii "z"
+  adr x8, arr 
+
 .section .text,"ax"
 
 _start:
@@ -39,13 +48,6 @@ end:
   movz x0, 90
   movz x8, 93
   svc 0
-
-.section .data,"wa"
-msg:
-  .ascii "Hello, World! "
-var:
-  .ascii "z"
-  adr x8, arr 
 
 .section .bss,"wa"
 arr:

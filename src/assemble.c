@@ -109,15 +109,27 @@ u8 makeAssemble(void) {
       }
       execDirective(&f);
       break;
+    case T_EOL:
+      break;
     case T_LABEL:
+    case T_NONE:
+    case T_LABEL_DECLARATION:
+    case T_REGISTER:
+    case T_IMMEDIATE:
+    case T_SHIFT:
+    case T_EXTEND:
+    case T_CONDITION:
+    case T_STRING:
+    case T_RSBRACE:
+    case T_LSBRACE:
+    case T_BANG:
+    case T_EQUAL:
       if (*f.fields->value == '.') {
         errorFields("Unknown directive", &f);
       } else {
         errorFields("Unknown instruction", &f);
       }
       break;
-    default:
-      NULL;
     }
     ret = collectLineOfTokens(&f);
   }
