@@ -65,22 +65,21 @@ typedef struct Instruction {
 // IMPORTANT
 // instruction mnemonic MUST be in order of incresing opc field
 static const Instruction INSTRUCTIONS[] = {
-    {{"adr", "adrp"}, PCRELADDRESSING, {T_REGISTER, T_LABEL, T_EOL}},
     {{"b."}, CONDITIONAL_BRANCH_IMM, {T_CONDITION, T_LABEL, T_EOL}},
     {{"b", "bl"}, UNCONDITIONAL_BRANCH_IMM, {T_LABEL, T_EOL}},
     {{"cbz", "cbnz"}, COMPARE_BRANCH, {T_REGISTER, T_LABEL, T_EOL}},
     {{"tbz", "tbnz"}, TEST_BRANCH, {T_REGISTER, T_IMMEDIATE, T_LABEL, T_EOL}},
-    {{"ldr", "ldrsw"}, LDR_LITERAL, {T_REGISTER, T_LABEL, T_EOL}},
-
     {{"br", "blr", "ret"}, UNCONDITIONAL_BRANCH_REG, {T_REGISTER | OPTIONAL, T_EOL}},
+
+    {{"adr", "adrp"}, PCRELADDRESSING, {T_REGISTER, T_LABEL, T_EOL}},
     {{"movn", "movz", "movk"}, MOVEWIDE, {T_REGISTER, T_IMMEDIATE, T_SHIFT | OPTIONAL, T_IMMEDIATE | OPTIONAL, T_EOL}},
     {{"add", "sub", "adds", "subs"}, ADDSUB_IMM, {T_REGISTER, T_REGISTER, T_IMMEDIATE, T_SHIFT | OPTIONAL, T_IMMEDIATE | OPTIONAL, T_EOL}},
     {{"and", "bic", "orr", "orn", "eor", "eon", "ands", "bics"}, LOGICAL_SH_REG, {T_REGISTER, T_REGISTER, T_REGISTER, T_SHIFT | OPTIONAL, T_IMMEDIATE | OPTIONAL, T_EOL}},
     {{"svc", "hvc", "smc", "brk", "hlt", "tcancel", "dcps1", "dcps2", "dcps3"}, EXCEPTION, {T_IMMEDIATE, T_EOL}},
     {{"and", "orr", "eor", "ands"}, LOGICAL_IMM, {T_REGISTER, T_REGISTER, T_IMMEDIATE, T_EOL}},
 
+    {{"ldr", "ldrsw"}, LDR_LITERAL, {T_REGISTER, T_LABEL, T_EOL}},
     {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_REG, {T_REGISTER, T_RSBRACE, T_REGISTER, T_REGISTER, T_EXTEND | T_SHIFT | OPTIONAL, T_IMMEDIATE | OPTIONAL, T_LSBRACE, T_EOL}},
-
     {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_IMM_POST_INDEX,      {T_REGISTER, T_RSBRACE, T_REGISTER, T_LSBRACE, T_IMMEDIATE, T_EOL}},
     {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_IMM_PRE_INDEX,       {T_REGISTER, T_RSBRACE, T_REGISTER, T_IMMEDIATE, T_LSBRACE, T_BANG, T_EOL}},
     {{"strb", "ldrb", "ldrsb", "strh", "ldrh", "ldrsh", "str", "ldr", "ldrsw"}, LDR_STR_IMM_UNSIGNDE_OFFSET, {T_REGISTER, T_RSBRACE, T_REGISTER, T_LSBRACE | T_IMMEDIATE, T_LSBRACE | OPTIONAL, T_EOL}},
@@ -89,17 +88,17 @@ static const Instruction INSTRUCTIONS[] = {
     {{"ccmn", "ccmp"}, CONDITIONAL_COMPARE_IMM, {T_REGISTER, T_IMMEDIATE, T_IMMEDIATE, T_CONDITION, T_EOL}},
 };
 
-u8 searchMnemonic(const char *mnemonic) {
+i8 searchMnemonic(const char *mnemonic) {
   for (u64 i = 0; i < sizeof(INSTRUCTIONS) / sizeof(*INSTRUCTIONS); i++) {
     u8 j = 0;
     while (INSTRUCTIONS[i].mnemonic[j]) {
       if (strcmp(mnemonic, INSTRUCTIONS[i].mnemonic[j]) == 0) {
-        return 1;
+        return i;
       }
       j++;
     }
   }
-  return 0;
+  return -1;
 }
 
 u8 instructionIndex(InstructionType type, const char *mnemonic) {
@@ -1209,6 +1208,16 @@ ArmInstruction assemble(const Fields *instruction) {
   Signature s = getSignature(instruction);
   InstructionType it = getInstructionType(instruction->fields->value, &s);
 
+  if (it == NONE) {
+    i8 i = 0;
+    if ((i = searchMnemonic(instruction->fields->value)) != -1) {
+      it = INSTRUCTIONS[i].type;
+      errorFields("Incorrect arguments for instruction", instruction);
+    } else {
+      errorFields("Unknown instruction", instruction);
+    }
+  }
+
   ArmInstruction i = 0;
   switch (it) {
   case LOGICAL_IMM:
@@ -1262,11 +1271,6 @@ ArmInstruction assemble(const Fields *instruction) {
     i = assembleLdrStrImm(instruction, it);
     break;
   case NONE:
-    if (searchMnemonic(instruction->fields->value)) {
-      errorFields("Incorrect arguments for instruction", instruction);
-    } else {
-      errorFields("Unknown instruction", instruction);
-    }
     return 0;
   }
 

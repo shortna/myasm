@@ -1,4 +1,3 @@
-movk x0,0,lsl 0
 .global _start
 
 .section .data,"wa"

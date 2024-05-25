@@ -31,7 +31,7 @@ TokenType getTokenType(const Token *t) {
     return T_IMMEDIATE;
   }
 
-  if (searchMnemonic(t->value)) {
+  if (searchMnemonic(t->value) != -1) {
     return T_INSTRUCTION;
   }
 

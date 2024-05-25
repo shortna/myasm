@@ -6,6 +6,6 @@
 #include "myasm.h"
 
 u32 assemble(const Fields *instruction);
-u8 searchMnemonic(const char *mnemonic);
+i8 searchMnemonic(const char *mnemonic);
 
 #endif

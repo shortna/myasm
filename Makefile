@@ -56,6 +56,9 @@ endif
 install:
 > cp $(TARGET_DIR)/$(TARGET) $(INSTALL_PATH)
 
+uninstall:
+> rm $(INSTALL_PATH)/$(TARGET)
+
 clean:
 > $(RM) -r $(TARGET_DIR)
 
