@@ -16,7 +16,7 @@ INSTALL_PATH := /usr/local/bin/
 ARCH := $(shell uname -m)
 export CC
 
-.PHONY: all clean install debug SET_CC
+.PHONY: all clean install uninstall debug 
 .SILENT: $(TARGET_DIR)
 
 all: $(TARGET_DIR) $(TARGET)
