@@ -8,8 +8,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define MAX_NUMBER_FILES (20)
-
 static const struct option LONG_OPTIONS[] = {
     {"o", required_argument, NULL, 'o'},
     {0, 0, 0, 0},
